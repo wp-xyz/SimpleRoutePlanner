@@ -62,8 +62,16 @@
         <Filename Value="srpdatamodule.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="GeneralDataModule"/>
+        <HasResources Value="True"/>
         <ResourceBaseClass Value="DataModule"/>
         <UnitName Value="srpDatamodule"/>
+      </Unit>
+      <Unit>
+        <Filename Value="srpsettings.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="SettingsForm"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="srpSettings"/>
       </Unit>
     </Units>
   </ProjectOptions>
@@ -75,7 +83,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <UnitOutputDirectory Value="../ppu/$(TargetCPU)-$(TargetOS)"/>
+      <UnitOutputDirectory Value="..\ppu\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Linking>
       <Debugging>

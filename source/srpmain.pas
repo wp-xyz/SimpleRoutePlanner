@@ -7,10 +7,10 @@ interface
 uses
   Classes, SysUtils, Math, IniFiles, fgl,
   Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, ComCtrls, SynEdit,
-  LCLIntf, LCLType,
-  mvMapViewer, mvTypes, mvEngine, mvPluginCommon, mvMarkerPlugins, mvPlugins,
+  LCLIntf, LCLType, Types,
+  mvMapViewer, mvTypes, mvEngine, mvPluginCommon, mvMarkerPlugins, mvPlugins, mvGpsObj,
   fpHttpClient, fpJSON,
-  srpAPIKey, mvGpsObj, Types;
+  srpAPIKey, srpSettings;
 
 const
   NO_POINT: TRealPoint = (Lon:999.0; Lat:999.0);
@@ -130,6 +130,8 @@ type
     ToolBar1: TToolBar;
     tbAuto: TToolButton;
     tbPedestrian: TToolButton;
+    ToolButton1: TToolButton;
+    tbSettings: TToolButton;
     procedure btnClearClick(Sender: TObject);
     procedure btnClearViaClick(Sender: TObject);
     procedure btnLoadClick(Sender: TObject);
@@ -155,6 +157,7 @@ type
     procedure tbPickEndPtClick(Sender: TObject);
     procedure tbPickStartPtClick(Sender: TObject);
     procedure tbPickViaPtClick(Sender: TObject);
+    procedure tbSettingsClick(Sender: TObject);
     procedure tbTrainClick(Sender: TObject);
   private
     FPickMode: TPickMode;
@@ -925,7 +928,7 @@ begin
     MapView.MapCenter.RealPt := pt;
     MapView.Zoom := ini.ReadInteger('Mao', 'Zoom', MapView.Zoom);
 
-    n := ini.ReadInteger('Routing', 'CostingModel', 0);
+    n := ini.ReadInteger('Routing', 'Vehicle', 0);
     case n of
       0: tbAuto.Down := true;
       1: tbPedestrian.Down := true;
@@ -1077,6 +1080,26 @@ begin
   PageControl.ActivePage := pgRoute;
 end;
 
+procedure TMainForm.tbSettingsClick(Sender: TObject);
+var
+  F: TSettingsForm;
+begin
+  F := TSettingsForm.Create(nil);
+  try
+    F.Position := poMainFormCenter;
+    F.Language := FLanguage;
+    F.LengthUnits := LengthUnits;
+    if F.ShowModal = mrOK then
+    begin
+      FLanguage := F.Language;
+      LengthUnits := F.LengthUnits;
+      GetRoute(FStartPt, FViaPt, FEndPt);
+    end;
+  finally
+    F.Free;
+  end;
+end;
+
 procedure TMainForm.tbTrainClick(Sender: TObject);
 begin
   GetRoute(FStartPt, FViaPt, FEndPt);
@@ -1095,7 +1118,6 @@ begin
     ini.WriteInteger('MainForm', 'Top', ScaleFormTo96(Top));
     ini.WriteInteger('MainForm', 'Width', ScaleFormTo96(Width));
     ini.WriteInteger('MainForm', 'Height', ScaleFormTo96(Height));
-
     ini.WriteInteger('MainForm', 'PageIndex', PageControl.ActivePageIndex);
 
     ini.WriteString('Map', 'API_Key', FApiKey);
@@ -1106,7 +1128,7 @@ begin
 
     if tbAuto.Down then n := 0;
     if tbPedestrian.Down then n := 1;
-    ini.WriteInteger('Routing', 'CostingModel', n);
+    ini.WriteInteger('Routing', 'Vehicle', n);
     ini.WriteString('Routing', 'Language', FLanguage);
     ini.WriteString('Routing', 'LengthUnits', LengthUnits);
   finally
