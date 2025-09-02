@@ -70,6 +70,7 @@
         <Filename Value="srpsettings.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="SettingsForm"/>
+        <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="srpSettings"/>
       </Unit>

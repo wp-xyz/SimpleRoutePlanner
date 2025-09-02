@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, Math, IniFiles, fgl,
   Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, ComCtrls, SynEdit,
-  LCLIntf, LCLType, Types,
+  LCLIntf, LCLType, Buttons, Types,
   mvMapViewer, mvTypes, mvEngine, mvPluginCommon, mvMarkerPlugins, mvPlugins, mvGpsObj,
   fpHttpClient, fpJSON,
   srpAPIKey, srpSettings;
@@ -15,6 +15,7 @@ uses
 const
   NO_POINT: TRealPoint = (Lon:999.0; Lat:999.0);
 
+  // ImageIndices in ImageList32
   IMGINDEX_START = 0;
   IMGINDEX_VIA = 0;
   IMGINDEX_END = 0;
@@ -82,14 +83,14 @@ type
   { TMainForm }
 
   TMainForm = class(TForm)
+    Bevel1: TBevel;
     btnClear: TButton;
     btnClearVia: TButton;
     gbVia: TGroupBox;
-    ImageList16: TImageList;
     infoViaLat: TLabel;
     infoViaLon: TLabel;
-    Label1: TLabel;
-    Label2: TLabel;
+    lblTotalLength: TLabel;
+    lblTotalTime: TLabel;
     infoTotalLength: TLabel;
     infoTotalTime: TLabel;
     lblViaLat: TLabel;
@@ -98,6 +99,10 @@ type
     Panel1: TPanel;
     Panel3: TPanel;
     Panel4: TPanel;
+    ToolbarPanel: TPanel;
+    sbAuto: TSpeedButton;
+    sbPedestrian: TSpeedButton;
+    sbSettings: TSpeedButton;
     Splitter1: TSplitter;
     tbPickEndPt: TToggleBox;
     tbPickStartPt: TToggleBox;
@@ -127,11 +132,6 @@ type
     pgJSON: TTabSheet;
     pgRoute: TTabSheet;
     tbPickViaPt: TToggleBox;
-    ToolBar1: TToolBar;
-    tbAuto: TToolButton;
-    tbPedestrian: TToolButton;
-    ToolButton1: TToolButton;
-    tbSettings: TToolButton;
     procedure btnClearClick(Sender: TObject);
     procedure btnClearViaClick(Sender: TObject);
     procedure btnLoadClick(Sender: TObject);
@@ -152,13 +152,12 @@ type
       var CanClick: Boolean);
     procedure MarkerEditorPluginEndDrag(Sender: TObject);
     procedure MarkerEditorPluginSelectionChange(Sender: TObject);
-    procedure tbAutoClick(Sender: TObject);
-    procedure tbPedestrianClick(Sender: TObject);
+    procedure sbSettingsClick(Sender: TObject);
+    procedure sbAutoClick(Sender: TObject);
+    procedure sbPedestrianClick(Sender: TObject);
     procedure tbPickEndPtClick(Sender: TObject);
     procedure tbPickStartPtClick(Sender: TObject);
     procedure tbPickViaPtClick(Sender: TObject);
-    procedure tbSettingsClick(Sender: TObject);
-    procedure tbTrainClick(Sender: TObject);
   private
     FPickMode: TPickMode;
     FSelected: TPickMode;
@@ -622,10 +621,10 @@ end;
 
 function TMainForm.GetCostingAsString: String;
 begin
-  if tbAuto.Down then
+  if sbAuto.Down then
     Result := 'auto'
   else
-  if tbPedestrian.Down then
+  if sbPedestrian.Down then
     Result := 'pedestrian'
   else
     raise Exception.Create('Selected costing not implemented.');
@@ -930,8 +929,8 @@ begin
 
     n := ini.ReadInteger('Routing', 'Vehicle', 0);
     case n of
-      0: tbAuto.Down := true;
-      1: tbPedestrian.Down := true;
+      0: sbAuto.Down := true;
+      1: sbPedestrian.Down := true;
     end;
     FLanguage := StringReplace(ini.ReadString('Routing', 'Language', 'en-EN'), '_', '-', []);
     LengthUnits := ini.ReadString('Routing', 'LengthUnits', LengthUnits);
@@ -949,6 +948,36 @@ begin
   try
     if F.ShowModal = mrOK then
       FApiKey := F.ApiKey;
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TMainForm.sbAutoClick(Sender: TObject);
+begin
+  GetRoute(FStartPt, FViaPt, FEndPt);
+end;
+
+procedure TMainForm.sbPedestrianClick(Sender: TObject);
+begin
+  GetRoute(FStartPt, FViaPt, FEndPt);
+end;
+
+procedure TMainForm.sbSettingsClick(Sender: TObject);
+var
+  F: TSettingsForm;
+begin
+  F := TSettingsForm.Create(nil);
+  try
+    F.Position := poMainFormCenter;
+    F.Language := FLanguage;
+    F.LengthUnits := LengthUnits;
+    if F.ShowModal = mrOK then
+    begin
+      FLanguage := F.Language;
+      LengthUnits := F.LengthUnits;
+      GetRoute(FStartPt, FViaPt, FEndPt);
+    end;
   finally
     F.Free;
   end;
@@ -1042,24 +1071,14 @@ begin
   else
   begin
     pt := FRoute.PolyLine[AManeuver.ShapeIndex_Begin];
-    if tbAuto.Down then
+    if sbAuto.Down then
       marker.ImageIndex := IMGINDEX_CAR
     else
-    if tbPedestrian.Down then
+    if sbPedestrian.Down then
       marker.ImageIndex := IMGINDEX_PEDESTRIAN;
     marker.RealPoint := pt;
     marker.Visible := true;
   end;
-end;
-
-procedure TMainForm.tbAutoClick(Sender: TObject);
-begin
-  GetRoute(FStartPt, FViaPt, FEndPt);
-end;
-
-procedure TMainForm.tbPedestrianClick(Sender: TObject);
-begin
-  GetRoute(FStartPt, FViaPt, FEndPt);
 end;
 
 procedure TMainForm.tbPickEndPtClick(Sender: TObject);
@@ -1078,31 +1097,6 @@ procedure TMainForm.tbPickViaPtClick(Sender: TObject);
 begin
   FPickMode := pmVia;
   PageControl.ActivePage := pgRoute;
-end;
-
-procedure TMainForm.tbSettingsClick(Sender: TObject);
-var
-  F: TSettingsForm;
-begin
-  F := TSettingsForm.Create(nil);
-  try
-    F.Position := poMainFormCenter;
-    F.Language := FLanguage;
-    F.LengthUnits := LengthUnits;
-    if F.ShowModal = mrOK then
-    begin
-      FLanguage := F.Language;
-      LengthUnits := F.LengthUnits;
-      GetRoute(FStartPt, FViaPt, FEndPt);
-    end;
-  finally
-    F.Free;
-  end;
-end;
-
-procedure TMainForm.tbTrainClick(Sender: TObject);
-begin
-  GetRoute(FStartPt, FViaPt, FEndPt);
 end;
 
 procedure TMainForm.WriteIni;
@@ -1126,8 +1120,8 @@ begin
     ini.WriteFloat('Map', 'MapCenter_Longitude', MapView.Center.Lon);
     ini.WriteInteger('Map', 'Zoom', MapView.Zoom);
 
-    if tbAuto.Down then n := 0;
-    if tbPedestrian.Down then n := 1;
+    if sbAuto.Down then n := 0;
+    if sbPedestrian.Down then n := 1;
     ini.WriteInteger('Routing', 'Vehicle', n);
     ini.WriteString('Routing', 'Language', FLanguage);
     ini.WriteString('Routing', 'LengthUnits', LengthUnits);
