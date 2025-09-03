@@ -26,14 +26,14 @@ object MainForm: TMainForm
       ClientHeight = 560
       ClientWidth = 814
       object MapView: TMapView
-        Left = 2
+        Left = 4
         Height = 552
         Top = 4
-        Width = 568
+        Width = 569
         Align = alClient
-        BorderSpacing.Left = 2
+        BorderSpacing.Left = 4
         BorderSpacing.Top = 4
-        BorderSpacing.Right = 4
+        BorderSpacing.Right = 1
         BorderSpacing.Bottom = 4
         DefaultTrackWidth = 3
         DownloadEngine = MapView.BuiltInDLE
@@ -71,13 +71,13 @@ object MainForm: TMainForm
         ClientWidth = 235
         TabOrder = 2
         object lbManeuvers: TListBox
-          Left = 4
+          Left = 1
           Height = 514
           Top = 42
-          Width = 229
+          Width = 230
           Align = alClient
-          BorderSpacing.Left = 4
-          BorderSpacing.Right = 2
+          BorderSpacing.Left = 1
+          BorderSpacing.Right = 4
           BorderSpacing.Bottom = 4
           ItemHeight = 0
           Style = lbOwnerDrawVariable
@@ -127,9 +127,11 @@ object MainForm: TMainForm
             Left = 74
             Height = 15
             Top = 0
-            Width = 84
+            Width = 88
             BorderSpacing.Left = 8
             Caption = 'infoTotalLength'
+            Font.Style = [fsBold]
+            ParentFont = False
           end
           object infoTotalTime: TLabel
             AnchorSideLeft.Control = infoTotalLength
@@ -137,8 +139,10 @@ object MainForm: TMainForm
             Left = 74
             Height = 15
             Top = 19
-            Width = 74
+            Width = 77
             Caption = 'infoTotalTime'
+            Font.Style = [fsBold]
+            ParentFont = False
           end
         end
       end
@@ -688,7 +692,7 @@ object MainForm: TMainForm
           Left = 81
           Height = 25
           Top = 0
-          Width = 75
+          Width = 74
           BorderSpacing.Left = 6
           Caption = 'Load...'
           TabOrder = 1
@@ -785,11 +789,11 @@ object MainForm: TMainForm
         AnchorSideLeft.Control = gbStart
         AnchorSideLeft.Side = asrCenter
         AnchorSideTop.Control = gbStart
-        Left = 41
+        Left = 40
         Height = 25
         Hint = 'Activates selection of the start point of the route which is then picked by clicking in the map.'
         Top = 0
-        Width = 75
+        Width = 76
         BorderSpacing.Bottom = 8
         Caption = 'Pick'
         TabOrder = 0

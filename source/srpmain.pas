@@ -202,19 +202,14 @@ var
   i: Integer;
   propinfo: PPropInfo;
   cntrl: TControl;
-  fnt: TFont;
 begin
   for i:=0 to AGroupbox.ControlCount-1 do begin
     cntrl := AGroupbox.Controls[i];
+    // Does the control have a ParentFont property?
     propinfo := GetPropInfo(cntrl, 'ParentFont');
     if propinfo <> nil then
+      // If yes, turn it off .
       SetOrdProp(cntrl, propinfo, Longint(false));
-    propinfo := GetPropInfo(cntrl, 'Font');
-    if propinfo <> nil then begin
-      fnt := TFont(GetObjectProp(cntrl, 'Font'));
-      fnt.Style := [];
-      SetObjectProp(cntrl, 'Font', fnt);
-    end;
   end;
   AGroupbox.Font.Style := [fsBold];
 end;
