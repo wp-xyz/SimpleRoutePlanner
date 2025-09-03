@@ -74,6 +74,18 @@
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="srpSettings"/>
       </Unit>
+      <Unit>
+        <Filename Value="srpviaframe.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="ViaFrame"/>
+        <ResourceBaseClass Value="Frame"/>
+        <UnitName Value="srpViaFrame"/>
+      </Unit>
+      <Unit>
+        <Filename Value="srpglobals.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="srpGlobals"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -90,11 +102,6 @@
       <Debugging>
         <DebugInfoType Value="dsDwarf3"/>
       </Debugging>
-      <Options>
-        <Win32>
-          <GraphicApplication Value="True"/>
-        </Win32>
-      </Options>
     </Linking>
     <Other>
       <CompilerMessages>

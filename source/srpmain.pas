@@ -10,11 +10,9 @@ uses
   LCLIntf, LCLType, Buttons, Types,
   mvMapViewer, mvTypes, mvEngine, mvPluginCommon, mvMarkerPlugins, mvPlugins, mvGpsObj,
   fpHttpClient, fpJSON,
-  srpAPIKey, srpSettings;
+  srpGlobals, srpAPIKey, srpSettings, srpViaFrame;
 
 const
-  NO_POINT: TRealPoint = (Lon:999.0; Lat:999.0);
-
   // ImageIndices in ImageList32
   IMGINDEX_START = 0;
   IMGINDEX_VIA = 0;
@@ -79,26 +77,22 @@ type
     property PolyLine: TRealPointArray read FPolyLine;
   end;
 
+  TViaFrames = specialize TFPGObjectList <TViaFrame>;
 
   { TMainForm }
 
   TMainForm = class(TForm)
     Bevel1: TBevel;
     btnClear: TButton;
-    btnClearVia: TButton;
-    gbVia: TGroupBox;
-    infoViaLat: TLabel;
-    infoViaLon: TLabel;
+    btnAddViaPoint: TBitBtn;
     lblTotalLength: TLabel;
     lblTotalTime: TLabel;
     infoTotalLength: TLabel;
     infoTotalTime: TLabel;
-    lblViaLat: TLabel;
-    lblViaLon: TLabel;
     lbManeuvers: TListBox;
-    Panel1: TPanel;
     Panel3: TPanel;
     Panel4: TPanel;
+    ViaPointsPanel: TPanel;
     ToolbarPanel: TPanel;
     sbAuto: TSpeedButton;
     sbPedestrian: TSpeedButton;
@@ -131,11 +125,11 @@ type
     SynEdit1: TSynEdit;
     pgJSON: TTabSheet;
     pgRoute: TTabSheet;
-    tbPickViaPt: TToggleBox;
     procedure btnClearClick(Sender: TObject);
-    procedure btnClearViaClick(Sender: TObject);
+//    procedure btnClearViaClick(Sender: TObject);
     procedure btnLoadClick(Sender: TObject);
     procedure btnSaveClick(Sender: TObject);
+    procedure btnAddViaPointClick(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -160,7 +154,9 @@ type
     procedure tbPickViaPtClick(Sender: TObject);
   private
     FPickMode: TPickMode;
+    FPickVia: Integer;
     FSelected: TPickMode;
+    FSelectedViaIndex: Integer;
     FStartPt: TRealPoint;
     FViaPt: TRealPoint;
     FEndPt: TRealPoint;
@@ -168,15 +164,18 @@ type
     FMapProvider: String;
     FRoute: TRoute;
     FLanguage: String;
+    FViaFrames: TViaFrames;
     procedure AddRouteToMap(ALine: TRealPointArray);
+    procedure CloseViaFrameHandler(Sender: TObject);
     function GetCostingAsString: String;
     function GetLayer: TMapLayer;
-    procedure GetRoute({%H-}AStartPt, AViaPt, {%H-}AEndPt: TRealPoint);
+    procedure GetRoute;
     function GetManeuverMarkerLayer: TMapLayer;
+    function GetPickMode(out AViaIndex: Integer): TPickMode;
     procedure RequestApiKey;
     procedure SetEndPt(APoint: TRealPoint);
     procedure SetStartPt(APoint: TRealPoint);
-    procedure SetViaPt(APoint: TRealPoint);
+//    procedure SetViaPt(APoint: TRealPoint);
     procedure ShowRoute(AJson: TJSONData);
     procedure ShowManeuverMarker(AManeuver: TRouteManeuver);
 
@@ -195,24 +194,7 @@ implementation
 {$R *.lfm}
 
 uses
-  TypInfo, opensslsockets;
-
-procedure BoldGroupbox(AGroupbox: TCustomGroupbox);
-var
-  i: Integer;
-  propinfo: PPropInfo;
-  cntrl: TControl;
-begin
-  for i:=0 to AGroupbox.ControlCount-1 do begin
-    cntrl := AGroupbox.Controls[i];
-    // Does the control have a ParentFont property?
-    propinfo := GetPropInfo(cntrl, 'ParentFont');
-    if propinfo <> nil then
-      // If yes, turn it off .
-      SetOrdProp(cntrl, propinfo, Longint(false));
-  end;
-  AGroupbox.Font.Style := [fsBold];
-end;
+  opensslsockets;
 
 // https://github.com/mapbox/polyline/blob/master/src/polyline.js
 function DecodePolyLine(AStr: String; APrecision: Integer): TRealPointArray;
@@ -472,11 +454,54 @@ begin
   end;
 end;
 
+procedure TMainForm.btnAddViaPointClick(Sender: TObject);
+var
+  frame: TViaFrame;
+begin
+  frame := TViaFrame.Create(self);
+  frame.Name := '';
+  frame.Index := FViaFrames.Count;
+  frame.ViaPoint := NO_POINT;
+  frame.Parent := ViaPointsPanel;
+  frame.Align := alTop;
+  frame.Top := 9999;
+  frame.OnClose := @CloseViaFrameHandler;
+  FViaFrames.Add(frame);
+end;
+
+procedure TMainForm.CloseViaFrameHandler(Sender: TObject);
+var
+  i, idx: Integer;
+  layer: TMapLayer;
+begin
+  idx := FViaFrames.IndexOf(TViaFrame(Sender));
+  if idx <> -1 then
+  begin
+    // Delete the via frame
+    FViaFrames.Delete(idx);
+
+    // Update the caption of the remaining via frames
+    for i := 0 to FViaFrames.Count-1 do
+      FViaFrames[i].Index := i;
+
+    // Delete the via point from the map
+    layer := GetLayer;
+    inc(idx, 2);  // Keep start and end points
+    if idx < layer.PointsOfInterest.Count then
+      layer.PointsOfInterest.Delete(idx);
+
+    // Update the caption of the remaining via points in the map
+    for i := 2 to layer.PointsOfInterest.Count-1 do
+      layer.PointsOfInterest[i].Caption := 'Via #' + IntToStr(i-1);
+  end;
+  GetRoute;
+end;
+
 procedure TMainForm.btnClearClick(Sender: TObject);
 begin
   SetStartPt(NO_POINT);
-  SetViaPt(NO_POINT);
   SetEndPt(NO_POINT);
+  FViaFrames.Clear;
   MapView.Layers.Clear;
   lbManeuvers.Items.Clear;
   SynEdit1.Lines.Clear;
@@ -489,17 +514,17 @@ begin
   if OpenDialog.Execute then
     SynEdit1.Lines.LoadFromFile(OpenDialog.Filename);
 end;
-
+                                     (*
 procedure TMainForm.btnClearViaClick(Sender: TObject);
 var
   layer: TMapLayer;
 begin
-  SetViaPt(NO_POINT);
-  GetRoute(FStartPt, FViaPt, FEndPt);
+  FViaFrames.Clear;
+  GetRoute;
   layer := GetLayer;
-  if layer.PointsOfInterest.Count = 3 then
+  while layer.PointsOfInterest.Count > 2 then
     layer.PointsOfInterest.Delete(2);
-end;
+end;                               *)
 
 procedure TMainForm.btnSaveClick(Sender: TObject);
 begin
@@ -523,8 +548,9 @@ end;
 
 procedure TMainForm.FormCreate(Sender: TObject);
 begin
+  FViaFrames := TViaFrames.Create;
+
   BoldGroupBox(gbStart);
-  BoldGroupBox(gbVia);
   BoldGroupBox(gbEnd);
 
   ReadIni;
@@ -554,6 +580,7 @@ end;
 procedure TMainForm.FormDestroy(Sender: TObject);
 begin
   FreeAndNil(FRoute);
+  FreeAndNil(FViaFrames);
 end;
 
 procedure TMainForm.lbManeuversClick(Sender: TObject);
@@ -641,6 +668,29 @@ begin
   Result := MapView.Layers[1];
 end;
 
+function TMainForm.GetPickMode(out AViaIndex: Integer): TPickMode;
+var
+  i: Integer;
+begin
+  Result := pmNone;
+  AViaIndex := -1;
+  if tbPickStartPt.Checked then
+    Result := pmStart
+  else
+  if tbPickEndPt.Checked then
+    Result := pmEnd
+  else
+  begin
+    Result := pmVia;
+    for i := 0 to FViaFrames.Count-1 do
+      if FViaFrames[i].Selected then
+      begin
+        AViaIndex := i;
+        exit;
+      end;
+  end;
+end;
+
 // code from: https://wiki.freepascal.org/fphttpclient#Posting_JSON
 // json: https://docs.stadiamaps.com/routing/standard-routing/?utm_content=explore_api_docs&utm_campaign=products_routing_navigation_turn_by_turn_directions&utm_source=marketing_site#__tabbed_1_6
 // details: https://docs.stadiamaps.com/api-reference/
@@ -667,7 +717,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
     "units": "miles"
 }' "https://api.stadiamaps.com/route/v1?api_key=YOUR-API-KEY"
 *)
-procedure TMainForm.GetRoute(AStartPt, AViaPt, AEndPt: TRealPoint);
+procedure TMainForm.GetRoute;
 const
   LocationParamsMask =
     '    { '+ LineEnding +
@@ -685,7 +735,7 @@ var
   Params: string = '{ ' + LineEnding +
       '"locations": [ ' + LineEnding +
       '%s' +      // start point
-      '%s' +      // via point
+      '%s' +      // via point(s)
       '%s' +      // end point
       '], ' + LineEnding +
       '"costing": "%s", ' + LineEnding +       // "car", "bicycle", "bus", "pedestrians" (+ some more)
@@ -707,6 +757,8 @@ var
   URL: string = 'https://api.stadiamaps.com/route/v1?api_key=%s';
 var
   json: TJSONData;
+  i: Integer;
+  viaPt: TRealPoint;
 begin
   if FStartPt.Equal(NO_POINT) then exit;
   if FEndPt.Equal(NO_POINT) then exit;
@@ -723,10 +775,19 @@ begin
   StartParams := Format(LocationParamsMask + ',' + LineEnding, [
     FStartPt.Lon, FStartPt.Lat, 'break'
   ], fs);
-  if not AViaPt.Equal(NO_POINT) then
-    ViaParams := Format(LocationParamsMask + ',' + LineEnding, [
-      FViaPt.Lon, FViaPt.Lat, 'via'
-    ], fs);
+
+  ViaParams := '';
+  for i := 0 to FViaFrames.Count-1 do
+  begin
+    viaPt := FViaFrames[i].ViaPoint;
+    if not viaPt.Equal(NO_POINT) then
+      ViaParams := ViaParams + //',' + LineEnding +
+        Format(LocationParamsMask + ',' + LineEnding, [
+          viaPt.Lon, viaPt.Lat, 'via'
+        ], fs);
+  end;
+  //if ViaParams <> '' then Delete(ViaParams, 1, Length(','+LineEnding));
+
   EndParams := Format(LocationParamsMask + LineEnding, [
     FEndPt.Lon, FEndPt.Lat, 'break'
   ], fs);
@@ -751,6 +812,8 @@ begin
         try
           SynEdit1.Lines.Text := json.FormatJSON([], 2);
           ShowRoute(json);
+          if Client.ResponseStatusCode <> 200 then
+            SynEdit1.Lines.AddText(TRawByteStringStream(Client.RequestBody).DataString);
         finally
           json.Free;
         end;
@@ -780,13 +843,13 @@ var
   layer: TMapLayer;
   poi: TMapPointOfInterest;
   i: Integer;
+  viaIdx: Integer;
 begin
   if Button <> mbLeft then
     exit;
 
-  case FPickMode of
+  case GetPickMode(viaIdx) of
     pmStart:
-      if tbPickStartPt.Checked then
       begin
         SetStartPt(MapView.ScreenToLatLon(Point(X, Y)));
         layer := GetLayer;
@@ -796,32 +859,31 @@ begin
         poi.RealPoint := FStartPt;
         poi.ImageIndex := IMGINDEX_START;
         poi.Caption := 'Start';
-        GetRoute(FStartPt, FViaPt, FEndPt);
+        GetRoute;
         MarkerEditorPlugin.Selection.Clear;
         tbPickStartPt.Checked := false;
         FPickMode := pmNone;
       end;
 
     pmVia:
-      if tbPickViaPt.Checked then
+      if viaIdx > -1 then
       begin
-        SetViaPt(MapView.ScreenToLatLon(Point(X, Y)));
+        FViaFrames[viaIdx].ViaPoint := MapView.ScreenToLatLon(Point(X, Y));
         layer := GetLayer;
-        if layer.PointsOfInterest.Count < 3 then
-          for i := layer.PointsOfInterest.Count to 2 do
+        if layer.PointsOfInterest.Count < 3 + viaIdx then
+          for i := layer.PointsOfInterest.Count to 2 + viaIdx do
             layer.PointsOfInterest.Add;
-        poi := layer.PointsOfInterest[2];               // 2 = via point
-        poi.RealPoint := FViaPt;
+        poi := layer.PointsOfInterest[2 + viaIdx];               // 2 = via point
+        poi.RealPoint := FViaFrames[viaIdx].ViaPoint;
         poi.ImageIndex := IMGINDEX_VIA;
-        poi.Caption := 'Via';
-        GetRoute(FStartPt, FViaPt, FEndPt);
+        poi.Caption := 'Via #' + IntToStr(viaIdx+1);
+        GetRoute;
         MarkerEditorPlugin.Selection.Clear;
-        tbPickViaPt.Checked := false;
+        FViaFrames[viaIdx].UnselectVia;
         FPickMode := pmNone;
       end;
 
     pmEnd:
-      if tbPickEndPt.Checked then
       begin
         SetEndPt(MapView.ScreenToLatLon(Point(X, Y)));
         layer := GetLayer;
@@ -832,7 +894,7 @@ begin
         poi.RealPoint := FEndPt;
         poi.ImageIndex := IMGINDEX_END;
         poi.Caption := 'Destination';
-        GetRoute(FStartPt, FViaPt, FEndPt);
+        GetRoute;
         tbPickEndPt.Checked := false;
         FPickMode := pmNone;
         MarkerEditorPlugin.Selection.Clear;
@@ -842,16 +904,24 @@ end;
 
 procedure TMainForm.MarkerEditorPluginCanClick(AMapView: TMapView;
   APoint: TGPSPoint; var CanClick: Boolean);
+var
+  i: Integer;
+  pt: TRealPoint;
 begin
-  CanClick :=
-    APoint.RealPoint.Equal(FStartPt) or
-    APoint.RealPoint.Equal(FEndPt) or
-    (APoint.RealPoint.Equal(FViaPt) and not (FViaPt.Equal(NO_POINT)));
+  CanClick := APoint.RealPoint.Equal(FStartPt) or APoint.RealPoint.Equal(FEndPt);
+  if not CanClick then
+    for i := 0 to FViaFrames.Count-1 do
+    begin
+      pt := FViaFrames[i].ViaPoint;
+      CanClick := APoint.RealPoint.Equal(pt) and not (pt.Equal(NO_POINT));
+      if CanClick then exit;
+    end;
 end;
 
 procedure TMainForm.MarkerEditorPluginEndDrag(Sender: TObject);
 var
   pt: TRealPoint;
+  i: Integer;
 begin
   if MarkerEditorPlugin.Selection.Count > 0 then
   begin
@@ -860,30 +930,41 @@ begin
       pmStart:
         SetStartPt(pt);
       pmVia:
-        SetViaPt(pt);
+        FViaFrames[FSelectedViaIndex].ViaPoint := pt;
       pmEnd:
         SetEndPt(pt);
       else
         exit;
     end;
-    GetRoute(FStartPt, FViaPt, FEndPt);
+    GetRoute;
   end;
 end;
 
 procedure TMainForm.MarkerEditorPluginSelectionChange(Sender: TObject);
+var
+  selPt: TRealPoint;
+  i: Integer;
 begin
+  FSelected := pmNone;
   if MarkerEditorPlugin.Selection.Count > 0 then
   begin
-    if MarkerEditorPlugin.Selection[0].RealPoint.Equal(FStartPt) then
+    selPt := MarkerEditorPlugin.Selection[0].RealPoint;
+    if selPt.Equal(FStartPt) then
       FSelected := pmStart
     else
-    if MarkerEditorPlugin.Selection[0].RealPoint.Equal(FViaPt) then
-      FSelected := pmVia
-    else
-    if MarkerEditorPlugin.Selection[0].RealPoint.Equal(FEndPt) then
+    if selPt.Equal(FEndPt) then
       FSelected := pmEnd
     else
-      FSelected := pmNone;
+    if selPt.Equal(FViaPt) then
+      FSelected := pmVia
+    else
+      for i := 0 to FViaFrames.Count-1 do
+        if selPt.Equal(FViaFrames[i].ViaPoint) then
+        begin
+          FSelected := pmVia;
+          FSelectedViaIndex := i;
+          break;
+        end;
   end;
 end;
 
@@ -919,7 +1000,7 @@ begin
     pt.Lat := ini.ReadFloat('Map', 'MapCenter_Latitude', MapView.Center.Lat);
     pt.Lon := ini.ReadFloat('Map', 'MapCenter_Longitude', MapView.Center.Lon);
     MapView.MapCenter.RealPt := pt;
-    MapView.Zoom := ini.ReadInteger('Mao', 'Zoom', MapView.Zoom);
+    MapView.Zoom := ini.ReadInteger('Map', 'Zoom', MapView.Zoom);
 
     n := ini.ReadInteger('Routing', 'Vehicle', 0);
     case n of
@@ -949,12 +1030,12 @@ end;
 
 procedure TMainForm.sbAutoClick(Sender: TObject);
 begin
-  GetRoute(FStartPt, FViaPt, FEndPt);
+  GetRoute;
 end;
 
 procedure TMainForm.sbPedestrianClick(Sender: TObject);
 begin
-  GetRoute(FStartPt, FViaPt, FEndPt);
+  GetRoute;
 end;
 
 procedure TMainForm.sbSettingsClick(Sender: TObject);
@@ -970,7 +1051,7 @@ begin
     begin
       FLanguage := F.Language;
       LengthUnits := F.LengthUnits;
-      GetRoute(FStartPt, FViaPt, FEndPt);
+      GetRoute;
     end;
   finally
     F.Free;
@@ -1004,7 +1085,7 @@ begin
     infoStartLon.Caption := FormatFloat('0.000000', FStartPt.Lon) + '°';
   end;
 end;
-
+               (*
 procedure TMainForm.SetViaPt(APoint: TRealPoint);
 begin
   FViaPt := APoint;
@@ -1017,7 +1098,7 @@ begin
     infoViaLat.Caption := FormatFloat('0.000000', FViaPt.Lat) + '°';
     infoViaLon.Caption := FormatFloat('0.000000', FViaPt.Lon) + '°';
   end;
-end;
+end;         *)
 
 procedure TMainForm.ShowRoute(AJson: TJSONData);
 var
