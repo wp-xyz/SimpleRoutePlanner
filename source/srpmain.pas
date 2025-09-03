@@ -224,7 +224,7 @@ var
   lon: Double = 0.0;
   shift: Integer = 0;
   res: Integer = 0;
-  b: Byte = 0;
+  b: Byte;
   lat_change, lon_change: Double;
   factor: Double;
   n: Integer = 0;
@@ -236,8 +236,6 @@ begin
 
   while index < Length(AStr) do
   begin
-//    b := 0;
-
     // Latitude
     shift := 1;
     res := 0;
@@ -688,7 +686,7 @@ var
       '"locations": [ ' + LineEnding +
       '%s' +      // start point
       '%s' +      // via point
-      '%s' +       // end point
+      '%s' +      // end point
       '], ' + LineEnding +
       '"costing": "%s", ' + LineEnding +       // "car", "bicycle", "bus", "pedestrians" (+ some more)
       '"costing_options": { ' + LineEnding +
@@ -698,6 +696,7 @@ var
       '    }, ' + LineEnding +
       '    "pedestrians": {' + LineEnding +
       '       "use_tracks": 1.0, ' + LineEnding +
+      '       "use_highways": 0.0, ' + LineEnding +
       '       "ignore_oneways": true ' + LineEnding +
       '    } ' + LineEnding +
       '}, ' + LineEnding +
