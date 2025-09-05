@@ -2,18 +2,19 @@ object SettingsForm: TSettingsForm
   Left = 597
   Height = 130
   Top = 318
-  Width = 328
+  Width = 326
   AutoSize = True
+  BorderStyle = bsDialog
   Caption = 'Settings'
   ClientHeight = 130
-  ClientWidth = 328
+  ClientWidth = 326
   LCLVersion = '4.99.0.0'
   OnActivate = FormActivate
   object ButtonPanel: TButtonPanel
     Left = 6
     Height = 34
     Top = 90
-    Width = 316
+    Width = 314
     OKButton.Name = 'OKButton'
     OKButton.DefaultCaption = True
     HelpButton.Name = 'HelpButton'

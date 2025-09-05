@@ -2,11 +2,11 @@ object ApiKeyForm: TApiKeyForm
   Left = 310
   Height = 187
   Top = 107
-  Width = 310
+  Width = 312
   AutoSize = True
   Caption = 'API Key'
   ClientHeight = 187
-  ClientWidth = 310
+  ClientWidth = 312
   Position = poScreenCenter
   ShowHint = True
   LCLVersion = '4.99.0.0'
@@ -15,7 +15,7 @@ object ApiKeyForm: TApiKeyForm
     Left = 6
     Height = 34
     Top = 147
-    Width = 298
+    Width = 300
     OKButton.Name = 'OKButton'
     OKButton.DefaultCaption = True
     HelpButton.Name = 'HelpButton'
@@ -35,7 +35,7 @@ object ApiKeyForm: TApiKeyForm
     Left = 12
     Height = 30
     Top = 12
-    Width = 286
+    Width = 288
     Anchors = [akTop, akLeft, akRight]
     BorderSpacing.Left = 12
     BorderSpacing.Top = 12

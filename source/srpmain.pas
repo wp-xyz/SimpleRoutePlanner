@@ -16,7 +16,7 @@ const
   // ImageIndices in ImageList32
   IMGINDEX_START = 0;
   IMGINDEX_VIA = 0;
-  IMGINDEX_END = 0;
+  IMGINDEX_END = 4;    // Flag
   IMGINDEX_CAR = 1;
   IMGINDEX_PEDESTRIAN = 2;
 
@@ -79,6 +79,7 @@ type
   { TMainForm }
 
   TMainForm = class(TForm)
+    ImageList24: TImageList;
     lblTotalLength: TLabel;
     lblTotalTime: TLabel;
     infoTotalLength: TLabel;
@@ -86,7 +87,7 @@ type
     lbManeuvers: TListBox;
     lbLocations: TListBox;
     LocationsPanel: TPanel;
-    Panel3: TPanel;
+    ManeuverPanel: TPanel;
     tbClearLocations: TToolButton;
     tbVehicleAuto: TToolButton;
     tbVehiclePedestrian: TToolButton;
@@ -98,7 +99,6 @@ type
     LocationsToolbar: TToolBar;
     tbAddLocation: TToolButton;
     tbDeleteLocation: TToolButton;
-    ToolButton3: TToolButton;
     tbPickLocation: TToolButton;
     Splitter1: TSplitter;
     btnSave: TButton;
@@ -117,6 +117,7 @@ type
     pgRoute: TTabSheet;
     procedure btnLoadClick(Sender: TObject);
     procedure btnSaveClick(Sender: TObject);
+    procedure FormActivate(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -124,8 +125,8 @@ type
     procedure lbLocationsDblClick(Sender: TObject);
     procedure lbLocationsDrawItem(Control: TWinControl; Index: Integer;
       ARect: TRect; State: TOwnerDrawState);
-    procedure lbLocationsMouseDown(Sender: TObject; Button: TMouseButton;
-      Shift: TShiftState; X, Y: Integer);
+    procedure lbLocationsMouseDown(Sender: TObject; {%H-}Button: TMouseButton;
+      {%H-}Shift: TShiftState; {%H-}X, Y: Integer);
     procedure lbManeuversClick(Sender: TObject);
     procedure lbManeuversDrawItem(Control: TWinControl; Index: Integer;
       ARect: TRect; State: TOwnerDrawState);
@@ -151,6 +152,7 @@ type
     FMapProvider: String;
     FRoute: TRoute;
     FLanguage: String;
+    FActivated: Boolean;
     procedure AddRouteToMap(ALine: TRealPointArray);
     function GetCostingAsString: String;
     function GetLayer: TMapLayer;
@@ -169,6 +171,7 @@ type
     function CalcIniFileName: String;
     procedure ReadIni;
     procedure WriteIni;
+
   public
 
   end;
@@ -467,6 +470,18 @@ begin
     end;
 end;
 
+procedure TMainForm.FormActivate(Sender: TObject);
+begin
+  if not FActivated then
+  begin
+    FActivated := true;
+    lbLocations.ItemHeight :=
+      TextHeight(lbLocations.Font, [fsBold], 'Tg') +
+      TextHeight(lbLocations.Font, [], 'Tg')*2 +
+      Scale96ToFont(4);
+  end;
+end;
+
 procedure TMainForm.FormCreate(Sender: TObject);
 begin
   infoTotalLength.Caption := '-';
@@ -479,7 +494,6 @@ begin
     Scale96ToFont(4);
 
   InitLocations;
-  lbLocations.ItemIndex := -1;
 
   ReadIni;
   if FApiKey = '' then
@@ -507,154 +521,6 @@ end;
 procedure TMainForm.FormDestroy(Sender: TObject);
 begin
   FreeAndNil(FRoute);
-end;
-
-procedure TMainForm.lbLocationsClick(Sender: TObject);
-begin
-  UpdateCmds;
-end;
-
-procedure TMainForm.lbLocationsDblClick(Sender: TObject);
-begin
-  tbPickLocation.Down := true;
-end;
-
-procedure TMainForm.lbLocationsDrawItem(Control: TWinControl; Index: Integer;
-  ARect: TRect; State: TOwnerDrawState);
-var
-  listbox: TListbox;
-  poi: TMapPointOfInterest;
-  pt: TRealPoint;
-  h, w, wLon, wLat: Integer;
-  x, y: Integer;
-  hasCoord: Boolean;
-begin
-  listbox := TListBox(Control);
-  if listbox.Items.Count = 0 then
-    exit;
-
-  listbox.Canvas.Font.Assign(listbox.Font);
-  if [odSelected, odFocused] * State <> [] then
-  begin
-    listbox.Canvas.Brush.Color := clHighlight;
-    listbox.Canvas.Font.Color := clHighlightText;
-  end else
-  begin
-    listbox.Canvas.Brush.Color := clWindow;
-    listbox.Canvas.Font.Color := clWindowText;
-  end;
-  listbox.Canvas.FillRect(ARect);
-
-  listbox.Canvas.Font.Style := [fsBold];
-  x := ARect.Left + 2;
-  y := ARect.Top + 2;
-  listbox.Canvas.TextOut(x, y, listbox.Items[Index]);
-  inc(y, listbox.Canvas.TextHeight('Tg'));
-  listbox.Canvas.Font.Style := [];
-  h := listbox.Canvas.TextHeight('Tg');
-  wLat := listbox.Canvas.TextWidth('Latitude: ');
-  wLon := listbox.Canvas.TextWidth('Longitude: ');
-  w := Max(wLon, wLat);
-  x := x + listbox.Canvas.TextWidth('M');
-  hasCoord := false;
-  poi := GetLocationPOI(Index);
-  if poi <> nil then
-  begin
-    pt := poi.RealPoint;
-    if not pt.Equal(NO_POINT) then
-    begin
-      listbox.Canvas.TextOut(x, y, 'Latitude:');
-      listbox.Canvas.TextOut(x + w, y, FormatFloat('0.000000', pt.Lat) + '°');
-      inc(y, h);
-      listbox.Canvas.TextOut(x, y, 'Longitude:');
-      listbox.Canvas.TextOut(x + w, y, FormatFloat('0.000000', pt.Lon) + '°');
-      hasCoord := True;
-    end;
-  end;
-  if not hasCoord then
-  begin
-    listbox.Canvas.TextOut(x, y, 'Latitude:');
-    listbox.Canvas.TextOut(x + w, y, '-');
-    inc(y, h);
-    listbox.Canvas.TextOut(x, y, 'Longitude:');
-    listbox.Canvas.TextOut(x + w, y, '-');
-  end;
-end;
-
-procedure TMainForm.lbLocationsMouseDown(Sender: TObject; Button: TMouseButton;
-  Shift: TShiftState; X, Y: Integer);
-var
-  idx: Integer;
-  R: TRect;
-  listbox: TListbox;
-begin
-  listbox := TListbox(Sender);
-  if listbox.ItemIndex >= 0 then
-  begin
-    R := listbox.ItemRect(listbox.ItemIndex);
-    if Y > R.Bottom then
-    begin
-      listbox.ItemIndex := -1;
-      listbox.Invalidate;
-      UpdateCmds;
-    end;
-  end;
-end;
-
-procedure TMainForm.lbManeuversClick(Sender: TObject);
-var
-  rm: TRouteManeuver;
-begin
-  if lbManeuvers.ItemIndex = -1 then
-    rm := nil
-  else
-    rm := TRouteManeuver(lbManeuvers.Items.Objects[lbManeuvers.ItemIndex]);
-  ShowManeuverMarker(rm);
-end;
-
-procedure TMainForm.lbManeuversDrawItem(Control: TWinControl; Index: Integer;
-  ARect: TRect; State: TOwnerDrawState);
-var
-  ts: TTextStyle;
-  listbox: TListbox;
-  txt: String;
-  dx: Integer;
-begin
-  listBox := TListBox(Control);
-  if [odSelected, odFocused] * State <> [] then
-  begin
-    listbox.Canvas.Brush.Color := clHighlight;
-    listbox.Canvas.Font.Color := clHighlightText;
-  end else
-  begin
-    listbox.Canvas.Brush.Color := clWindow;
-    listbox.canvas.Font.Color := clWindowText;
-  end;
-  listbox.Canvas.FillRect(ARect);
-
-  ts := listbox.Canvas.TextStyle;
-  ts.Wordbreak := true;
-  ts.SingleLine := false;
-  ts.Layout := tlCenter;
-  txt := listbox.Items[Index];
-  dx := Scale96ToFont(3);
-  OffsetRect(ARect, dx, 0);
-  listbox.Canvas.TextRect(ARect, ARect.Left, ARect.Top, txt, ts);
-end;
-
-procedure TMainForm.lbManeuversMeasureItem(Control: TWinControl;
-  Index: Integer; var AHeight: Integer);
-var
-  R: TRect;
-  txt: String;
-  listbox: TListBox;
-begin
-  listbox := TListbox(Control);
-  R := Rect(0, 0, listbox.ClientWidth - GetSystemMetrics(SM_CYVSCROLL), 10000);
-    // Strange: Listbox.ClientWidth seems to be WITH scrollbar (on Windows).
-  txt := listbox.Items[Index] + LineEnding;
-  DrawText(listbox.Canvas.Handle, PChar(txt), Length(txt), R, DT_CALCRECT or DT_WORDBREAK);
-  AHeight := R.Height;
 end;
 
 function TMainForm.GetCostingAsString: String;
@@ -752,9 +618,6 @@ var
   fs: TFormatSettings;
   Client: TFPHttpClient;
   Response: TStringStream;
-  StartParams: String = '';
-  ViaParams: String = '';
-  EndParams: String = '';
   Params: string = '{ ' + LineEnding +
       '"locations": [ ' + LineEnding +
       '%s' +      // start point
@@ -794,10 +657,12 @@ begin
   fs := DefaultFormatSettings;
   fs.DecimalSeparator := '.';
 
+  // Gets the location points (start, via, end)
   pts := GetLocationPoints;
   if Length(pts) < 2 then
     exit;
 
+  // Prepares the "locations" node for the json
   locationParams := '';
   for i := 0 to High(pts) do
   begin
@@ -814,42 +679,8 @@ begin
       ], fs);
   end;
 
-//  if Length(pts) > 2 then DebugLn(locationParams);
-
-(*
-  if FStartPt.Equal(NO_POINT) then exit;
-  if FEndPt.Equal(NO_POINT) then exit;
-
-  if FApiKey = '' then
-  begin
-    MessageDlg('API-Key needed for this application.', mtError, [mbOK], 0);
-    exit;
-  end;
-
-  fs := DefaultFormatSettings;
-  fs.DecimalSeparator := '.';
-
-  StartParams := Format(LocationParamsMask + ',' + LineEnding, [
-    FStartPt.Lon, FStartPt.Lat, 'break'
-  ], fs);
-
-  ViaParams := '';
-  for i := 0 to FViaFrames.Count-1 do
-  begin
-    viaPt := FViaFrames[i].ViaPoint;
-    if not viaPt.Equal(NO_POINT) then
-      ViaParams := ViaParams + //',' + LineEnding +
-        Format(LocationParamsMask + ',' + LineEnding, [
-          viaPt.Lon, viaPt.Lat, 'via'
-        ], fs);
-  end;
-  //if ViaParams <> '' then Delete(ViaParams, 1, Length(','+LineEnding));
-
-  EndParams := Format(LocationParamsMask + LineEnding, [
-    FEndPt.Lon, FEndPt.Lat, 'break'
-  ], fs);
-            *)
-
+  // Creates the full json, posts it to the server and reads and analyses the
+  // server' return stream.
   Screen.BeginWaitCursor;
   Client := TFPHttpClient.Create(nil);
   try
@@ -858,7 +689,6 @@ begin
     Client.AddHeader('Accept', 'application/json');
     Client.AllowRedirect := true;
     Client.RequestBody := TRawByteStringStream.Create(Format(Params, [
-//      StartParams, ViaParams, EndParams, GetCostingAsString,
       locationParams, GetCostingAsString,
       LengthUnits, FLanguage
     ]));
@@ -889,30 +719,180 @@ begin
   end;
 end;
 
+{ Called when the locations listbox should be cleared. After clearing it
+  adds the start and end entries locations agains which are needed permanently. }
 procedure TMainForm.InitLocations;
 begin
   lbLocations.Clear;
   NewLocation(0, 'Start point', IMGINDEX_START);
-  NewLocation(1, 'End point (destination)', IMGINDEX_END);
-  lbLocations.ItemIndex := 0;
+  NewLocation(1, 'End point'+LineEnding+'(Destination)', IMGINDEX_END);
+  lbLocations.ItemIndex := -1;
+end;
+
+procedure TMainForm.lbLocationsClick(Sender: TObject);
+begin
+  UpdateCmds;
+end;
+
+procedure TMainForm.lbLocationsDblClick(Sender: TObject);
+begin
+  tbPickLocation.Down := true;
+end;
+
+procedure TMainForm.lbLocationsDrawItem(Control: TWinControl; Index: Integer;
+  ARect: TRect; State: TOwnerDrawState);
+var
+  listbox: TListbox;
+  poi: TMapPointOfInterest;
+  pt: TRealPoint;
+  h, w, wLon, wLat, px2: Integer;
+  x, y: Integer;
+  hasCoord: Boolean;
+begin
+  listbox := TListBox(Control);
+  if listbox.Items.Count = 0 then
+    exit;
+
+  listbox.Canvas.Font.Assign(listbox.Font);
+  if [odSelected, odFocused] * State <> [] then
+  begin
+    listbox.Canvas.Brush.Color := clHighlight;
+    listbox.Canvas.Font.Color := clHighlightText;
+  end else
+  begin
+    listbox.Canvas.Brush.Color := clWindow;
+    listbox.Canvas.Font.Color := clWindowText;
+  end;
+  listbox.Canvas.FillRect(ARect);
+
+  listbox.Canvas.Font.Style := [fsBold];
+  px2 := Scale96ToFont(2);
+  x := ARect.Left + px2;
+  y := ARect.Top + px2;
+  listbox.Canvas.TextOut(x, y, listbox.Items[Index]);
+  inc(y, listbox.Canvas.TextHeight('Tg'));
+  listbox.Canvas.Font.Style := [];
+  h := listbox.Canvas.TextHeight('Tg');
+  wLat := listbox.Canvas.TextWidth('Latitude: ');
+  wLon := listbox.Canvas.TextWidth('Longitude: ');
+  w := Max(wLon, wLat);
+  x := x + listbox.Canvas.TextWidth('M');
+  hasCoord := false;
+  poi := GetLocationPOI(Index);
+  if poi <> nil then
+  begin
+    pt := poi.RealPoint;
+    if not pt.Equal(NO_POINT) then
+    begin
+      listbox.Canvas.TextOut(x, y, 'Latitude:');
+      listbox.Canvas.TextOut(x + w, y, FormatFloat('0.000000', pt.Lat) + '°');
+      inc(y, h);
+      listbox.Canvas.TextOut(x, y, 'Longitude:');
+      listbox.Canvas.TextOut(x + w, y, FormatFloat('0.000000', pt.Lon) + '°');
+      hasCoord := True;
+    end;
+  end;
+  if not hasCoord then
+  begin
+    listbox.Canvas.TextOut(x, y, 'Latitude:');
+    listbox.Canvas.TextOut(x + w, y, '-');
+    inc(y, h);
+    listbox.Canvas.TextOut(x, y, 'Longitude:');
+    listbox.Canvas.TextOut(x + w, y, '-');
+  end;
+end;
+
+procedure TMainForm.lbLocationsMouseDown(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+var
+  R: TRect;
+  listbox: TListbox;
+begin
+  listbox := TListbox(Sender);
+  if listbox.ItemIndex >= 0 then
+  begin
+    R := listbox.ItemRect(listbox.ItemIndex);
+    if Y > R.Bottom then
+    begin
+      listbox.ItemIndex := -1;
+      listbox.Invalidate;
+      UpdateCmds;
+    end;
+  end;
+end;
+
+procedure TMainForm.lbManeuversClick(Sender: TObject);
+var
+  rm: TRouteManeuver;
+begin
+  if lbManeuvers.ItemIndex = -1 then
+    rm := nil
+  else
+    rm := TRouteManeuver(lbManeuvers.Items.Objects[lbManeuvers.ItemIndex]);
+  ShowManeuverMarker(rm);
+end;
+
+procedure TMainForm.lbManeuversDrawItem(Control: TWinControl; Index: Integer;
+  ARect: TRect; State: TOwnerDrawState);
+var
+  ts: TTextStyle;
+  listbox: TListbox;
+  txt: String;
+  dx: Integer;
+begin
+  listBox := TListBox(Control);
+  if [odSelected, odFocused] * State <> [] then
+  begin
+    listbox.Canvas.Brush.Color := clHighlight;
+    listbox.Canvas.Font.Color := clHighlightText;
+  end else
+  begin
+    listbox.Canvas.Brush.Color := clWindow;
+    listbox.canvas.Font.Color := clWindowText;
+  end;
+  listbox.Canvas.FillRect(ARect);
+
+  ts := listbox.Canvas.TextStyle;
+  ts.Wordbreak := true;
+  ts.SingleLine := false;
+  ts.Layout := tlCenter;
+  txt := listbox.Items[Index];
+  dx := Scale96ToFont(3);
+  OffsetRect(ARect, dx, 0);
+  listbox.Canvas.TextRect(ARect, ARect.Left, ARect.Top, txt, ts);
+end;
+
+procedure TMainForm.lbManeuversMeasureItem(Control: TWinControl;
+  Index: Integer; var AHeight: Integer);
+var
+  R: TRect;
+  txt: String;
+  listbox: TListBox;
+begin
+  listbox := TListbox(Control);
+  R := Rect(0, 0, listbox.ClientWidth - GetSystemMetrics(SM_CYVSCROLL), 10000);
+    // Strange: Listbox.ClientWidth seems to be WITH scrollbar (on Windows).
+  txt := listbox.Items[Index] + LineEnding;
+  DrawText(listbox.Canvas.Handle, PChar(txt), Length(txt), R, DT_CALCRECT or DT_WORDBREAK);
+  AHeight := R.Height;
 end;
 
 procedure TMainForm.MapViewMouseDown(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 begin
   if tbPickLocation.Down and
-    (lbLocations.ItemIndex = 0) or ((lbLocations.ItemIndex = lbLocations.Items.Count-1))
+    ((lbLocations.ItemIndex = 0) or (lbLocations.ItemIndex = lbLocations.Items.Count-1))
   then
     MarkerEditorPlugin.Selection.Clear;
 end;
 
+{ The user released a mouse button. When the app is is "pick mode" and a
+  location item is selected in the listbox, the geo point is assigned to the
+  point-of-view of the selected item, and the route is recalculated. }
 procedure TMainForm.MapViewMouseUp(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 var
-  layer: TMapLayer;
   poi: TMapPointOfInterest;
-  i: Integer;
-
   pt: TRealPoint;
   locIdx: Integer;
 begin
@@ -923,7 +903,6 @@ begin
   begin
     pt := MapView.ScreenToLatLon(Point(X, Y));
     locIdx := lbLocations.ItemIndex;
-    layer := GetLayer;
     poi := GetLocationPOI(locIdx);
     poi.RealPoint := pt;
     poi.Visible := true;
@@ -945,7 +924,6 @@ var
   poi: TMapPointOfInterest;
   pt: TRealPoint;
 begin
-  CanClick := false;
   for i := 0 to lbLocations.Items.Count-1 do
   begin
     poi := GetLocationPOI(i);
@@ -956,6 +934,7 @@ begin
       if CanClick then exit;
     end;
   end;
+  CanClick := false;
 end;
 
 { The user has dragged a location point in the map. The method updates the
@@ -997,13 +976,17 @@ end;
 procedure TMainForm.NewLocation(AIndex: Integer; ACaption: String; AImageIndex: Integer);
 var
   poi: TMapPointOfInterest;
-  i: Integer;
 begin
   poi := GetLayer.PointsOfInterest.Add as TMapPointOfInterest;
   poi.RealPoint := NO_POINT;
   poi.Caption := ACaption;
   poi.ImageIndex := AImageIndex;
   poi.Visible := false;   // Will be made visible when the poi gets its coordinates
+  if AImageIndex = IMGINDEX_END then  // Assuming that this is the flag icon
+  begin
+    poi.ImageAnchorX := 0;
+    poi.ImageAnchorY := 100;
+  end;
 
   if lbLocations.Count < 2 then
     AIndex := lbLocations.Items.AddObject(ACaption, poi)
@@ -1140,6 +1123,7 @@ begin
   if (locIdx < 1) then    // cannot add a via point before the start point
     exit;
 
+  MarkerEditorPlugin.Selection.Clear;
   NewLocation(locIdx, '', IMGINDEX_VIA);
   UpdateViaCaptions;
 
