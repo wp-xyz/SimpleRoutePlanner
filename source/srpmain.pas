@@ -10,7 +10,7 @@ uses
   LCLIntf, LCLType, Buttons, Types,
   mvMapViewer, mvTypes, mvEngine, mvPluginCommon, mvMarkerPlugins, mvPlugins, mvGpsObj,
   fpHttpClient, fpJSON,
-  srpGlobals, srpAPIKey, srpSettings, srpViaFrame;
+  srpGlobals, srpAPIKey, srpSettings;
 
 const
   // ImageIndices in ImageList32
@@ -26,8 +26,6 @@ var
   LengthUnits: String = 'kilometers';  // or 'miles'
 
 type
-  TPickMode = (pmNone, pmStart, pmVia, pmEnd);
-
   TManeuverType = (
     mtNone,                                                       // 0
     mtStart, mtStartRight, mtStartLeft,                           // 1..3
@@ -77,62 +75,57 @@ type
     property PolyLine: TRealPointArray read FPolyLine;
   end;
 
-  TViaFrames = specialize TFPGObjectList <TViaFrame>;
 
   { TMainForm }
 
   TMainForm = class(TForm)
-    Bevel1: TBevel;
-    btnClear: TButton;
-    btnAddViaPoint: TBitBtn;
     lblTotalLength: TLabel;
     lblTotalTime: TLabel;
     infoTotalLength: TLabel;
     infoTotalTime: TLabel;
     lbManeuvers: TListBox;
+    lbLocations: TListBox;
+    LocationsPanel: TPanel;
     Panel3: TPanel;
-    Panel4: TPanel;
-    ViaPointsPanel: TPanel;
-    ToolbarPanel: TPanel;
-    sbAuto: TSpeedButton;
-    sbPedestrian: TSpeedButton;
-    sbSettings: TSpeedButton;
+    tbClearLocations: TToolButton;
+    tbVehicleAuto: TToolButton;
+    tbVehiclePedestrian: TToolButton;
+    tbSettings: TToolButton;
+    ToolButton2: TToolButton;
+    VehicleToolBar: TToolBar;
+    ToolButton1: TToolButton;
+    TotalInfoPanel: TPanel;
+    LocationsToolbar: TToolBar;
+    tbAddLocation: TToolButton;
+    tbDeleteLocation: TToolButton;
+    ToolButton3: TToolButton;
+    tbPickLocation: TToolButton;
     Splitter1: TSplitter;
-    tbPickEndPt: TToggleBox;
-    tbPickStartPt: TToggleBox;
     btnSave: TButton;
     btnLoad: TButton;
-    infoEndLon: TLabel;
-    infoEndLat: TLabel;
-    infoStartLat: TLabel;
-    infoStartLon: TLabel;
-    gbStart: TGroupBox;
-    gbEnd: TGroupBox;
     ImageList32: TImageList;
-    lblStartLat: TLabel;
-    lblStartLon: TLabel;
-    lblEndLat: TLabel;
-    lblEndLon: TLabel;
     MapView: TMapView;
     MvPluginManager: TMvPluginManager;
     LegalNoticePlugin: TLegalNoticePlugin;
     MarkerEditorPlugin: TMarkerEditorPlugin;
     OpenDialog: TOpenDialog;
     PageControl: TPageControl;
-    LeftPanel: TPanel;
     Panel2: TPanel;
     SaveDialog: TSaveDialog;
     SynEdit1: TSynEdit;
     pgJSON: TTabSheet;
     pgRoute: TTabSheet;
-    procedure btnClearClick(Sender: TObject);
-//    procedure btnClearViaClick(Sender: TObject);
     procedure btnLoadClick(Sender: TObject);
     procedure btnSaveClick(Sender: TObject);
-    procedure btnAddViaPointClick(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
+    procedure lbLocationsClick(Sender: TObject);
+    procedure lbLocationsDblClick(Sender: TObject);
+    procedure lbLocationsDrawItem(Control: TWinControl; Index: Integer;
+      ARect: TRect; State: TOwnerDrawState);
+    procedure lbLocationsMouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
     procedure lbManeuversClick(Sender: TObject);
     procedure lbManeuversDrawItem(Control: TWinControl; Index: Integer;
       ARect: TRect; State: TOwnerDrawState);
@@ -146,38 +139,32 @@ type
       var CanClick: Boolean);
     procedure MarkerEditorPluginEndDrag(Sender: TObject);
     procedure MarkerEditorPluginSelectionChange(Sender: TObject);
-    procedure sbSettingsClick(Sender: TObject);
-    procedure sbAutoClick(Sender: TObject);
-    procedure sbPedestrianClick(Sender: TObject);
-    procedure tbPickEndPtClick(Sender: TObject);
-    procedure tbPickStartPtClick(Sender: TObject);
-    procedure tbPickViaPtClick(Sender: TObject);
+    procedure tbAddLocationClick(Sender: TObject);
+    procedure tbClearLocationsClick(Sender: TObject);
+    procedure tbDeleteLocationClick(Sender: TObject);
+    procedure tbPickLocationClick(Sender: TObject);
+    procedure tbSettingsClick(Sender: TObject);
+    procedure tbVehicleAutoClick(Sender: TObject);
+    procedure tbVehiclePedestrianClick(Sender: TObject);
   private
-    FPickMode: TPickMode;
-    FPickVia: Integer;
-    FSelected: TPickMode;
-    FSelectedViaIndex: Integer;
-    FStartPt: TRealPoint;
-    FViaPt: TRealPoint;
-    FEndPt: TRealPoint;
     FApiKey: String;
     FMapProvider: String;
     FRoute: TRoute;
     FLanguage: String;
-    FViaFrames: TViaFrames;
     procedure AddRouteToMap(ALine: TRealPointArray);
-    procedure CloseViaFrameHandler(Sender: TObject);
     function GetCostingAsString: String;
     function GetLayer: TMapLayer;
-    procedure GetRoute;
+    function GetLocationPOI(AIndex: Integer): TMapPointOfInterest;
+    function GetLocationPoints: TRealPointArray;
     function GetManeuverMarkerLayer: TMapLayer;
-    function GetPickMode(out AViaIndex: Integer): TPickMode;
+    procedure GetRoute;
+    procedure InitLocations;
+    procedure NewLocation(AIndex: Integer; ACaption: String; AImageIndex: Integer);
     procedure RequestApiKey;
-    procedure SetEndPt(APoint: TRealPoint);
-    procedure SetStartPt(APoint: TRealPoint);
-//    procedure SetViaPt(APoint: TRealPoint);
     procedure ShowRoute(AJson: TJSONData);
     procedure ShowManeuverMarker(AManeuver: TRouteManeuver);
+    procedure UpdateCmds;
+    procedure UpdateViaCaptions;
 
     function CalcIniFileName: String;
     procedure ReadIni;
@@ -450,63 +437,8 @@ begin
   for i:= 0 to High(ALine) do
   begin
     point := track.Points.Add as TMapTrackPoint;
-    point.RealPoint := RealPoint(ALine[i].Lat, ALine[i].Lon);
+    point.RealPoint := ALine[i];
   end;
-end;
-
-procedure TMainForm.btnAddViaPointClick(Sender: TObject);
-var
-  frame: TViaFrame;
-begin
-  frame := TViaFrame.Create(self);
-  frame.Name := '';
-  frame.Index := FViaFrames.Count;
-  frame.ViaPoint := NO_POINT;
-  frame.Parent := ViaPointsPanel;
-  frame.Align := alTop;
-  frame.Top := 9999;
-  frame.OnClose := @CloseViaFrameHandler;
-  FViaFrames.Add(frame);
-end;
-
-procedure TMainForm.CloseViaFrameHandler(Sender: TObject);
-var
-  i, idx: Integer;
-  layer: TMapLayer;
-begin
-  idx := FViaFrames.IndexOf(TViaFrame(Sender));
-  if idx <> -1 then
-  begin
-    // Delete the via frame
-    FViaFrames.Delete(idx);
-
-    // Update the caption of the remaining via frames
-    for i := 0 to FViaFrames.Count-1 do
-      FViaFrames[i].Index := i;
-
-    // Delete the via point from the map
-    layer := GetLayer;
-    inc(idx, 2);  // Keep start and end points
-    if idx < layer.PointsOfInterest.Count then
-      layer.PointsOfInterest.Delete(idx);
-
-    // Update the caption of the remaining via points in the map
-    for i := 2 to layer.PointsOfInterest.Count-1 do
-      layer.PointsOfInterest[i].Caption := 'Via #' + IntToStr(i-1);
-  end;
-  GetRoute;
-end;
-
-procedure TMainForm.btnClearClick(Sender: TObject);
-begin
-  SetStartPt(NO_POINT);
-  SetEndPt(NO_POINT);
-  FViaFrames.Clear;
-  MapView.Layers.Clear;
-  lbManeuvers.Items.Clear;
-  SynEdit1.Lines.Clear;
-  infoTotalLength.Caption := '-';
-  infoTotalTime.Caption := '-';
 end;
 
 procedure TMainForm.btnLoadClick(Sender: TObject);
@@ -514,17 +446,6 @@ begin
   if OpenDialog.Execute then
     SynEdit1.Lines.LoadFromFile(OpenDialog.Filename);
 end;
-                                     (*
-procedure TMainForm.btnClearViaClick(Sender: TObject);
-var
-  layer: TMapLayer;
-begin
-  FViaFrames.Clear;
-  GetRoute;
-  layer := GetLayer;
-  while layer.PointsOfInterest.Count > 2 then
-    layer.PointsOfInterest.Delete(2);
-end;                               *)
 
 procedure TMainForm.btnSaveClick(Sender: TObject);
 begin
@@ -548,10 +469,17 @@ end;
 
 procedure TMainForm.FormCreate(Sender: TObject);
 begin
-  FViaFrames := TViaFrames.Create;
+  infoTotalLength.Caption := '-';
+  infoTotalTime.Caption := '-';
+  SynEdit1.Lines.Clear;
 
-  BoldGroupBox(gbStart);
-  BoldGroupBox(gbEnd);
+  lbLocations.ItemHeight :=
+    TextHeight(lbLocations.Font, [fsBold], 'Tg') +
+    TextHeight(lbLocations.Font, [], 'Tg')*2 +
+    Scale96ToFont(4);
+
+  InitLocations;
+  lbLocations.ItemIndex := -1;
 
   ReadIni;
   if FApiKey = '' then
@@ -570,17 +498,107 @@ begin
   MapView.MapProvider := FMapProvider;
 
   MapView.Active := FApiKey <> '';
-  LeftPanel.Enabled := FApiKey <> '';
+  LocationsPanel.Enabled := FApiKey <> '';
   Panel2.Enabled := FApiKey <> '';
 
-  btnClearClick(nil);
-  SynEdit1.Lines.Clear;
+  UpdateCmds;
 end;
 
 procedure TMainForm.FormDestroy(Sender: TObject);
 begin
   FreeAndNil(FRoute);
-  FreeAndNil(FViaFrames);
+end;
+
+procedure TMainForm.lbLocationsClick(Sender: TObject);
+begin
+  UpdateCmds;
+end;
+
+procedure TMainForm.lbLocationsDblClick(Sender: TObject);
+begin
+  tbPickLocation.Down := true;
+end;
+
+procedure TMainForm.lbLocationsDrawItem(Control: TWinControl; Index: Integer;
+  ARect: TRect; State: TOwnerDrawState);
+var
+  listbox: TListbox;
+  poi: TMapPointOfInterest;
+  pt: TRealPoint;
+  h, w, wLon, wLat: Integer;
+  x, y: Integer;
+  hasCoord: Boolean;
+begin
+  listbox := TListBox(Control);
+  if listbox.Items.Count = 0 then
+    exit;
+
+  listbox.Canvas.Font.Assign(listbox.Font);
+  if [odSelected, odFocused] * State <> [] then
+  begin
+    listbox.Canvas.Brush.Color := clHighlight;
+    listbox.Canvas.Font.Color := clHighlightText;
+  end else
+  begin
+    listbox.Canvas.Brush.Color := clWindow;
+    listbox.Canvas.Font.Color := clWindowText;
+  end;
+  listbox.Canvas.FillRect(ARect);
+
+  listbox.Canvas.Font.Style := [fsBold];
+  x := ARect.Left + 2;
+  y := ARect.Top + 2;
+  listbox.Canvas.TextOut(x, y, listbox.Items[Index]);
+  inc(y, listbox.Canvas.TextHeight('Tg'));
+  listbox.Canvas.Font.Style := [];
+  h := listbox.Canvas.TextHeight('Tg');
+  wLat := listbox.Canvas.TextWidth('Latitude: ');
+  wLon := listbox.Canvas.TextWidth('Longitude: ');
+  w := Max(wLon, wLat);
+  x := x + listbox.Canvas.TextWidth('M');
+  hasCoord := false;
+  poi := GetLocationPOI(Index);
+  if poi <> nil then
+  begin
+    pt := poi.RealPoint;
+    if not pt.Equal(NO_POINT) then
+    begin
+      listbox.Canvas.TextOut(x, y, 'Latitude:');
+      listbox.Canvas.TextOut(x + w, y, FormatFloat('0.000000', pt.Lat) + '°');
+      inc(y, h);
+      listbox.Canvas.TextOut(x, y, 'Longitude:');
+      listbox.Canvas.TextOut(x + w, y, FormatFloat('0.000000', pt.Lon) + '°');
+      hasCoord := True;
+    end;
+  end;
+  if not hasCoord then
+  begin
+    listbox.Canvas.TextOut(x, y, 'Latitude:');
+    listbox.Canvas.TextOut(x + w, y, '-');
+    inc(y, h);
+    listbox.Canvas.TextOut(x, y, 'Longitude:');
+    listbox.Canvas.TextOut(x + w, y, '-');
+  end;
+end;
+
+procedure TMainForm.lbLocationsMouseDown(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+var
+  idx: Integer;
+  R: TRect;
+  listbox: TListbox;
+begin
+  listbox := TListbox(Sender);
+  if listbox.ItemIndex >= 0 then
+  begin
+    R := listbox.ItemRect(listbox.ItemIndex);
+    if Y > R.Bottom then
+    begin
+      listbox.ItemIndex := -1;
+      listbox.Invalidate;
+      UpdateCmds;
+    end;
+  end;
 end;
 
 procedure TMainForm.lbManeuversClick(Sender: TObject);
@@ -619,7 +637,7 @@ begin
   ts.SingleLine := false;
   ts.Layout := tlCenter;
   txt := listbox.Items[Index];
-  dx := Scale96ToFont(2);
+  dx := Scale96ToFont(3);
   OffsetRect(ARect, dx, 0);
   listbox.Canvas.TextRect(ARect, ARect.Left, ARect.Top, txt, ts);
 end;
@@ -641,13 +659,13 @@ end;
 
 function TMainForm.GetCostingAsString: String;
 begin
-  if sbAuto.Down then
+  if tbVehicleAuto.Down then
     Result := 'auto'
   else
-  if sbPedestrian.Down then
+  if tbVehiclePedestrian.Down then
     Result := 'pedestrian'
   else
-    raise Exception.Create('Selected costing not implemented.');
+    raise Exception.Create('Selected costing model not implemented.');
 end;
 
 function TMainForm.GetLayer: TMaplayer;
@@ -658,6 +676,34 @@ begin
     Result := MapView.Layers[0];
 end;
 
+{ Determines the point-of-interest stored a the given index in the Locations list }
+function TMainForm.GetLocationPOI(AIndex: Integer): TMapPointOfInterest;
+begin
+  Result := TMapPointOfInterest(lbLocations.Items.Objects[AIndex]);
+end;
+
+{ Counts the number of locations, but only those which really contain GPS
+  coordinates. }
+function TMainForm.GetLocationPoints: TRealPointArray;
+var
+  i, n: Integer;
+  poi: TMapPointOfInterest;
+begin
+  Result := nil;
+  n := 0;
+  SetLength(Result, lbLocations.Items.Count);
+  for i := 0 to lbLocations.Items.Count-1 do
+  begin
+    poi := GetLocationPOI(i);
+    if Assigned(poi) and not poi.RealPoint.Equal(NO_POINT) then
+    begin
+      Result[n] := poi.RealPoint;
+      inc(n);
+    end;
+  end;
+  SetLength(Result, n);
+end;
+
 function TMainForm.GetManeuverMarkerLayer: TMapLayer;
 var
   i: Integer;
@@ -666,29 +712,6 @@ begin
     for i := MapView.Layers.Count to 1 do
       MapView.Layers.Add;
   Result := MapView.Layers[1];
-end;
-
-function TMainForm.GetPickMode(out AViaIndex: Integer): TPickMode;
-var
-  i: Integer;
-begin
-  Result := pmNone;
-  AViaIndex := -1;
-  if tbPickStartPt.Checked then
-    Result := pmStart
-  else
-  if tbPickEndPt.Checked then
-    Result := pmEnd
-  else
-  begin
-    Result := pmVia;
-    for i := 0 to FViaFrames.Count-1 do
-      if FViaFrames[i].Selected then
-      begin
-        AViaIndex := i;
-        exit;
-      end;
-  end;
 end;
 
 // code from: https://wiki.freepascal.org/fphttpclient#Posting_JSON
@@ -735,8 +758,8 @@ var
   Params: string = '{ ' + LineEnding +
       '"locations": [ ' + LineEnding +
       '%s' +      // start point
-      '%s' +      // via point(s)
-      '%s' +      // end point
+//      '%s' +      // via point(s)
+//      '%s' +      // end point
       '], ' + LineEnding +
       '"costing": "%s", ' + LineEnding +       // "car", "bicycle", "bus", "pedestrians" (+ some more)
       '"costing_options": { ' + LineEnding +
@@ -758,8 +781,42 @@ var
 var
   json: TJSONData;
   i: Integer;
-  viaPt: TRealPoint;
+  pts: TRealPointArray;
+  locationParams: String;
+  locationType: String;
 begin
+  if FApiKey = '' then
+  begin
+    MessageDlg('An API-Key is needed for this application.', mtError, [mbOK], 0);
+    exit;
+  end;
+
+  fs := DefaultFormatSettings;
+  fs.DecimalSeparator := '.';
+
+  pts := GetLocationPoints;
+  if Length(pts) < 2 then
+    exit;
+
+  locationParams := '';
+  for i := 0 to High(pts) do
+  begin
+    if i > 0 then
+    begin
+      locationParams := locationParams + ',' + LineEnding;
+      locationType := 'via';
+    end;
+    if (i = 0) or (i = High(pts)) then
+      locationType := 'break';
+    locationParams := locationParams +
+      Format(LocationParamsMask, [
+        pts[i].Lon, pts[i].Lat, locationType
+      ], fs);
+  end;
+
+//  if Length(pts) > 2 then DebugLn(locationParams);
+
+(*
   if FStartPt.Equal(NO_POINT) then exit;
   if FEndPt.Equal(NO_POINT) then exit;
 
@@ -791,6 +848,7 @@ begin
   EndParams := Format(LocationParamsMask + LineEnding, [
     FEndPt.Lon, FEndPt.Lat, 'break'
   ], fs);
+            *)
 
   Screen.BeginWaitCursor;
   Client := TFPHttpClient.Create(nil);
@@ -800,7 +858,8 @@ begin
     Client.AddHeader('Accept', 'application/json');
     Client.AllowRedirect := true;
     Client.RequestBody := TRawByteStringStream.Create(Format(Params, [
-      StartParams, ViaParams, EndParams, GetCostingAsString,
+//      StartParams, ViaParams, EndParams, GetCostingAsString,
+      locationParams, GetCostingAsString,
       LengthUnits, FLanguage
     ]));
     Response := TStringStream.Create('');
@@ -830,10 +889,20 @@ begin
   end;
 end;
 
+procedure TMainForm.InitLocations;
+begin
+  lbLocations.Clear;
+  NewLocation(0, 'Start point', IMGINDEX_START);
+  NewLocation(1, 'End point (destination)', IMGINDEX_END);
+  lbLocations.ItemIndex := 0;
+end;
+
 procedure TMainForm.MapViewMouseDown(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 begin
-  if FPickMode in [pmStart, pmEnd] then
+  if tbPickLocation.Down and
+    (lbLocations.ItemIndex = 0) or ((lbLocations.ItemIndex = lbLocations.Items.Count-1))
+  then
     MarkerEditorPlugin.Selection.Clear;
 end;
 
@@ -843,129 +912,107 @@ var
   layer: TMapLayer;
   poi: TMapPointOfInterest;
   i: Integer;
-  viaIdx: Integer;
+
+  pt: TRealPoint;
+  locIdx: Integer;
 begin
   if Button <> mbLeft then
     exit;
 
-  case GetPickMode(viaIdx) of
-    pmStart:
-      begin
-        SetStartPt(MapView.ScreenToLatLon(Point(X, Y)));
-        layer := GetLayer;
-        if layer.PointsOfInterest.Count < 1 then
-          layer.PointsOfInterest.Add;
-        poi := layer.PointsOfInterest[0];               // 0 = route start
-        poi.RealPoint := FStartPt;
-        poi.ImageIndex := IMGINDEX_START;
-        poi.Caption := 'Start';
-        GetRoute;
-        MarkerEditorPlugin.Selection.Clear;
-        tbPickStartPt.Checked := false;
-        FPickMode := pmNone;
-      end;
-
-    pmVia:
-      if viaIdx > -1 then
-      begin
-        FViaFrames[viaIdx].ViaPoint := MapView.ScreenToLatLon(Point(X, Y));
-        layer := GetLayer;
-        if layer.PointsOfInterest.Count < 3 + viaIdx then
-          for i := layer.PointsOfInterest.Count to 2 + viaIdx do
-            layer.PointsOfInterest.Add;
-        poi := layer.PointsOfInterest[2 + viaIdx];               // 2 = via point
-        poi.RealPoint := FViaFrames[viaIdx].ViaPoint;
-        poi.ImageIndex := IMGINDEX_VIA;
-        poi.Caption := 'Via #' + IntToStr(viaIdx+1);
-        GetRoute;
-        MarkerEditorPlugin.Selection.Clear;
-        FViaFrames[viaIdx].UnselectVia;
-        FPickMode := pmNone;
-      end;
-
-    pmEnd:
-      begin
-        SetEndPt(MapView.ScreenToLatLon(Point(X, Y)));
-        layer := GetLayer;
-        if layer.PointsOfInterest.Count < 2 then
-          for i := layer.PointsOfInterest.Count to 1 do
-            layer.PointsOfInterest.Add;
-        poi := layer.PointsOfInterest[1];               // 1 = route end point (destination)
-        poi.RealPoint := FEndPt;
-        poi.ImageIndex := IMGINDEX_END;
-        poi.Caption := 'Destination';
-        GetRoute;
-        tbPickEndPt.Checked := false;
-        FPickMode := pmNone;
-        MarkerEditorPlugin.Selection.Clear;
-      end;
+  if tbPickLocation.Down and (lbLocations.ItemIndex > -1) then
+  begin
+    pt := MapView.ScreenToLatLon(Point(X, Y));
+    locIdx := lbLocations.ItemIndex;
+    layer := GetLayer;
+    poi := GetLocationPOI(locIdx);
+    poi.RealPoint := pt;
+    poi.Visible := true;
+    lbLocations.ItemIndex := locIdx;
+    lbLocations.Invalidate;
+    GetRoute;
+    MarkerEditorPlugin.Selection.Clear;
+    tbPickLocation.Down := false;
+    UpdateCmds;
   end;
 end;
 
+{ When CanClick returns true the MarkerEditorPlugin allows the user to click on
+  the specified point and to drag it to a different location. }
 procedure TMainForm.MarkerEditorPluginCanClick(AMapView: TMapView;
   APoint: TGPSPoint; var CanClick: Boolean);
 var
   i: Integer;
+  poi: TMapPointOfInterest;
   pt: TRealPoint;
 begin
-  CanClick := APoint.RealPoint.Equal(FStartPt) or APoint.RealPoint.Equal(FEndPt);
-  if not CanClick then
-    for i := 0 to FViaFrames.Count-1 do
+  CanClick := false;
+  for i := 0 to lbLocations.Items.Count-1 do
+  begin
+    poi := GetLocationPOI(i);
+    if Assigned(poi) then
     begin
-      pt := FViaFrames[i].ViaPoint;
-      CanClick := APoint.RealPoint.Equal(pt) and not (pt.Equal(NO_POINT));
+      pt := poi.RealPoint;
+      CanClick := APoint.RealPoint.Equal(pt);
       if CanClick then exit;
     end;
-end;
-
-procedure TMainForm.MarkerEditorPluginEndDrag(Sender: TObject);
-var
-  pt: TRealPoint;
-  i: Integer;
-begin
-  if MarkerEditorPlugin.Selection.Count > 0 then
-  begin
-    pt := MarkerEditorPlugin.Selection[0].RealPoint;
-    case FSelected of
-      pmStart:
-        SetStartPt(pt);
-      pmVia:
-        FViaFrames[FSelectedViaIndex].ViaPoint := pt;
-      pmEnd:
-        SetEndPt(pt);
-      else
-        exit;
-    end;
-    GetRoute;
   end;
 end;
 
+{ The user has dragged a location point in the map. The method updates the
+  locations listbox and queries a new route from the server. }
+procedure TMainForm.MarkerEditorPluginEndDrag(Sender: TObject);
+begin
+  lbLocations.Invalidate;
+  GetRoute;
+end;
+
+{ The user has selected another location point in the map. This methods selects
+  the corresponding item in the locations listbox. }
 procedure TMainForm.MarkerEditorPluginSelectionChange(Sender: TObject);
 var
+  poi: TMapPointOfInterest;
   selPt: TRealPoint;
   i: Integer;
 begin
-  FSelected := pmNone;
   if MarkerEditorPlugin.Selection.Count > 0 then
   begin
     selPt := MarkerEditorPlugin.Selection[0].RealPoint;
-    if selPt.Equal(FStartPt) then
-      FSelected := pmStart
-    else
-    if selPt.Equal(FEndPt) then
-      FSelected := pmEnd
-    else
-    if selPt.Equal(FViaPt) then
-      FSelected := pmVia
-    else
-      for i := 0 to FViaFrames.Count-1 do
-        if selPt.Equal(FViaFrames[i].ViaPoint) then
-        begin
-          FSelected := pmVia;
-          FSelectedViaIndex := i;
-          break;
-        end;
+    for i := 0 to lbLocations.Items.Count-1 do
+    begin
+      poi := GetLocationPOI(i);
+      if selPt.Equal(poi.RealPoint) then
+      begin
+        lbLocations.ItemIndex := i;
+        lbLocations.Invalidate;
+        exit;
+      end;
+    end;
   end;
+end;
+
+{ Adds a point-of-interest to the map. Since the geo coordiates are not yet
+  known the point is hidden.
+  Adds also a new item to the locations listbox which stores the
+  point-of-interest in its Objects property. }
+procedure TMainForm.NewLocation(AIndex: Integer; ACaption: String; AImageIndex: Integer);
+var
+  poi: TMapPointOfInterest;
+  i: Integer;
+begin
+  poi := GetLayer.PointsOfInterest.Add as TMapPointOfInterest;
+  poi.RealPoint := NO_POINT;
+  poi.Caption := ACaption;
+  poi.ImageIndex := AImageIndex;
+  poi.Visible := false;   // Will be made visible when the poi gets its coordinates
+
+  if lbLocations.Count < 2 then
+    AIndex := lbLocations.Items.AddObject(ACaption, poi)
+  else
+    lbLocations.Items.InsertObject(AIndex, ACaption, poi);
+  lbLocations.ItemIndex := AIndex;
+  lbLocations.Invalidate;
+
+  UpdateCmds;
 end;
 
 procedure TMainForm.ReadIni;
@@ -1004,8 +1051,8 @@ begin
 
     n := ini.ReadInteger('Routing', 'Vehicle', 0);
     case n of
-      0: sbAuto.Down := true;
-      1: sbPedestrian.Down := true;
+      0: tbVehicleAuto.Down := true;
+      1: tbVehiclePedestrian.Down := true;
     end;
     FLanguage := StringReplace(ini.ReadString('Routing', 'Language', 'en-EN'), '_', '-', []);
     LengthUnits := ini.ReadString('Routing', 'LengthUnits', LengthUnits);
@@ -1027,78 +1074,6 @@ begin
     F.Free;
   end;
 end;
-
-procedure TMainForm.sbAutoClick(Sender: TObject);
-begin
-  GetRoute;
-end;
-
-procedure TMainForm.sbPedestrianClick(Sender: TObject);
-begin
-  GetRoute;
-end;
-
-procedure TMainForm.sbSettingsClick(Sender: TObject);
-var
-  F: TSettingsForm;
-begin
-  F := TSettingsForm.Create(nil);
-  try
-    F.Position := poMainFormCenter;
-    F.Language := FLanguage;
-    F.LengthUnits := LengthUnits;
-    if F.ShowModal = mrOK then
-    begin
-      FLanguage := F.Language;
-      LengthUnits := F.LengthUnits;
-      GetRoute;
-    end;
-  finally
-    F.Free;
-  end;
-end;
-
-procedure TMainForm.SetEndPt(APoint: TRealPoint);
-begin
-  FEndPt := APoint;
-  if APoint.Equal(NO_POINT) then
-  begin
-    infoEndLat.Caption := '';
-    infoEndLon.Caption := '';
-  end else
-  begin
-    infoEndLat.Caption := FormatFloat('0.000000', FEndPt.Lat) + '°';
-    infoEndLon.Caption := FormatFloat('0.000000', FEndPt.Lon) + '°';
-  end;
-end;
-
-procedure TMainForm.SetStartPt(APoint: TRealPoint);
-begin
-  FStartPt := APoint;
-  if APoint.Equal(NO_POINT) then
-  begin
-    infoStartLat.Caption := '';
-    infoStartLon.Caption := '';
-  end else
-  begin
-    infoStartLat.Caption := FormatFloat('0.000000', FStartPt.Lat) + '°';
-    infoStartLon.Caption := FormatFloat('0.000000', FStartPt.Lon) + '°';
-  end;
-end;
-               (*
-procedure TMainForm.SetViaPt(APoint: TRealPoint);
-begin
-  FViaPt := APoint;
-  if APoint.Equal(NO_POINT) then
-  begin
-    infoViaLat.Caption := '';
-    infoViaLon.Caption := '';
-  end else
-  begin
-    infoViaLat.Caption := FormatFloat('0.000000', FViaPt.Lat) + '°';
-    infoViaLon.Caption := FormatFloat('0.000000', FViaPt.Lon) + '°';
-  end;
-end;         *)
 
 procedure TMainForm.ShowRoute(AJson: TJSONData);
 var
@@ -1146,32 +1121,133 @@ begin
   else
   begin
     pt := FRoute.PolyLine[AManeuver.ShapeIndex_Begin];
-    if sbAuto.Down then
+    if tbVehicleAuto.Down then
       marker.ImageIndex := IMGINDEX_CAR
     else
-    if sbPedestrian.Down then
+    if tbVehiclePedestrian.Down then
       marker.ImageIndex := IMGINDEX_PEDESTRIAN;
     marker.RealPoint := pt;
     marker.Visible := true;
   end;
 end;
 
-procedure TMainForm.tbPickEndPtClick(Sender: TObject);
+{ The + button was clicked to add a "via" location to the listbox. }
+procedure TMainForm.tbAddLocationClick(Sender: TObject);
+var
+  locIdx: Integer;
 begin
-  FPickMode := pmEnd;
+  locIdx := lbLocations.ItemIndex;
+  if (locIdx < 1) then    // cannot add a via point before the start point
+    exit;
+
+  NewLocation(locIdx, '', IMGINDEX_VIA);
+  UpdateViaCaptions;
+
   PageControl.ActivePage := pgRoute;
 end;
 
-procedure TMainForm.tbPickStartPtClick(Sender: TObject);
+procedure TMainForm.tbClearLocationsClick(Sender: TObject);
 begin
-  FPickMode := pmStart;
+  MapView.Layers.Clear;
+  InitLocations;
+  lbManeuvers.Items.Clear;
+  SynEdit1.Lines.Clear;
+  infoTotalLength.Caption := '-';
+  infoTotalTime.Caption := '-';
+  lbLocations.ItemIndex := -1;
+  UpdateCmds;
+end;
+
+procedure TMainForm.tbDeleteLocationClick(Sender: TObject);
+var
+  locIdx: Integer;
+  poi: TMapPointOfInterest;
+begin
+  locIdx := lbLocations.ItemIndex;
+
+  // Cannot delete the start and end points.
+  if (locIdx = 0) or (locIdx = lbLocations.Items.Count-1) then
+    exit;
+
+  poi := GetLocationPOI(locIdx);
+  poi.Layer.PointsOfInterest.Delete(poi.Index);
+  lbLocations.Items.Delete(locIdx);
+  UpdateViaCaptions;
+  GetRoute;
+  UpdateCmds;
+end;
+
+procedure TMainForm.tbPickLocationClick(Sender: TObject);
+begin
   PageControl.ActivePage := pgRoute;
 end;
 
-procedure TMainForm.tbPickViaPtClick(Sender: TObject);
+procedure TMainForm.tbSettingsClick(Sender: TObject);
+var
+  F: TSettingsForm;
 begin
-  FPickMode := pmVia;
-  PageControl.ActivePage := pgRoute;
+  F := TSettingsForm.Create(nil);
+  try
+    F.Position := poMainFormCenter;
+    F.Language := FLanguage;
+    F.LengthUnits := LengthUnits;
+    if F.ShowModal = mrOK then
+    begin
+      FLanguage := F.Language;
+      LengthUnits := F.LengthUnits;
+      GetRoute;
+    end;
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TMainForm.tbVehicleAutoClick(Sender: TObject);
+begin
+  GetRoute;
+end;
+
+procedure TMainForm.tbVehiclePedestrianClick(Sender: TObject);
+begin
+  GetRoute;
+end;
+
+procedure TMainForm.UpdateCmds;
+var
+  locIdx: Integer;
+  i: Integer;
+  poi: TMapPointOfInterest;
+  enab: Boolean;
+begin
+  locIdx := lbLocations.ItemIndex;
+  tbAddLocation.Enabled := locIdx > 0;
+  tbDeleteLocation.Enabled := (locIdx > 0) and (locIdx < lbLocations.Items.Count -1 );
+  enab := false;
+  for i := 0 to lbLocations.Items.Count-1 do
+  begin
+    poi := GetLocationPOI(i);
+    if not poi.RealPoint.Equal(NO_POINT) then
+    begin
+      enab := true;
+      break;
+    end;
+  end;
+  tbClearLocations.Enabled := enab;
+  tbPickLocation.Enabled := locIdx <> -1;
+end;
+
+{ Makes sure that all via locations are named in order. }
+procedure TMainForm.UpdateViaCaptions;
+var
+  i: Integer;
+  poi: TMapPointOfInterest;
+begin
+  for i := 1 to lbLocations.Items.Count-2 do
+  begin
+    lbLocations.Items[i] := 'Via point #' + IntToStr(i);
+    poi := TMapPointOfInterest(lbLocations.Items.Objects[i]);
+    poi.Caption := lbLocations.Items[i];
+  end;
 end;
 
 procedure TMainForm.WriteIni;
@@ -1195,8 +1271,10 @@ begin
     ini.WriteFloat('Map', 'MapCenter_Longitude', MapView.Center.Lon);
     ini.WriteInteger('Map', 'Zoom', MapView.Zoom);
 
-    if sbAuto.Down then n := 0;
-    if sbPedestrian.Down then n := 1;
+    if tbVehicleAuto.Down then
+      n := 0
+    else if tbVehiclePedestrian.Down then
+      n := 1;
     ini.WriteInteger('Routing', 'Vehicle', n);
     ini.WriteString('Routing', 'Language', FLanguage);
     ini.WriteString('Routing', 'LengthUnits', LengthUnits);

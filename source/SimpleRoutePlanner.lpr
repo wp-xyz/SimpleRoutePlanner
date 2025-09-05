@@ -10,7 +10,7 @@ uses
   athreads,
   {$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, srpMain, srpAPIKey, srpDatamodule, srpSettings, srpViaFrame,
+  Forms, srpMain, srpAPIKey, srpDatamodule, srpSettings,
   srpGlobals;
 
 {$R *.res}

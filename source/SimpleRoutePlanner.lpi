@@ -12,6 +12,7 @@
       <XPManifest>
         <DpiAware Value="True"/>
       </XPManifest>
+      <Icon Value="0"/>
     </General>
     <BuildModes>
       <Item Name="Default" Default="True"/>
@@ -75,13 +76,6 @@
         <UnitName Value="srpSettings"/>
       </Unit>
       <Unit>
-        <Filename Value="srpviaframe.pas"/>
-        <IsPartOfProject Value="True"/>
-        <ComponentName Value="ViaFrame"/>
-        <ResourceBaseClass Value="Frame"/>
-        <UnitName Value="srpViaFrame"/>
-      </Unit>
-      <Unit>
         <Filename Value="srpglobals.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="srpGlobals"/>
@@ -102,6 +96,11 @@
       <Debugging>
         <DebugInfoType Value="dsDwarf3"/>
       </Debugging>
+      <Options>
+        <Win32>
+          <GraphicApplication Value="True"/>
+        </Win32>
+      </Options>
     </Linking>
     <Other>
       <CompilerMessages>

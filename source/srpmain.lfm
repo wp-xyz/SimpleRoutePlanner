@@ -12,10 +12,10 @@ object MainForm: TMainForm
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   object PageControl: TPageControl
-    Left = 172
+    Left = 198
     Height = 588
     Top = 6
-    Width = 822
+    Width = 796
     ActivePage = pgRoute
     Align = alClient
     BorderSpacing.Around = 6
@@ -24,12 +24,12 @@ object MainForm: TMainForm
     object pgRoute: TTabSheet
       Caption = 'Route'
       ClientHeight = 560
-      ClientWidth = 814
+      ClientWidth = 788
       object MapView: TMapView
         Left = 4
         Height = 552
         Top = 4
-        Width = 569
+        Width = 543
         Align = alClient
         BorderSpacing.Left = 4
         BorderSpacing.Top = 4
@@ -52,7 +52,7 @@ object MainForm: TMainForm
         OnMouseUp = MapViewMouseUp
       end
       object Splitter1: TSplitter
-        Left = 574
+        Left = 548
         Height = 560
         Top = 0
         Width = 5
@@ -60,7 +60,7 @@ object MainForm: TMainForm
         ResizeAnchor = akRight
       end
       object Panel3: TPanel
-        Left = 579
+        Left = 553
         Height = 560
         Top = 0
         Width = 235
@@ -86,7 +86,7 @@ object MainForm: TMainForm
           OnDrawItem = lbManeuversDrawItem
           OnMeasureItem = lbManeuversMeasureItem
         end
-        object Panel4: TPanel
+        object TotalInfoPanel: TPanel
           Left = 4
           Height = 34
           Top = 4
@@ -101,8 +101,8 @@ object MainForm: TMainForm
           ClientWidth = 231
           TabOrder = 1
           object lblTotalLength: TLabel
-            AnchorSideLeft.Control = Panel4
-            AnchorSideTop.Control = Panel4
+            AnchorSideLeft.Control = TotalInfoPanel
+            AnchorSideTop.Control = TotalInfoPanel
             Left = 0
             Height = 15
             Top = 0
@@ -123,7 +123,7 @@ object MainForm: TMainForm
           object infoTotalLength: TLabel
             AnchorSideLeft.Control = lblTotalLength
             AnchorSideLeft.Side = asrBottom
-            AnchorSideTop.Control = Panel4
+            AnchorSideTop.Control = TotalInfoPanel
             Left = 74
             Height = 15
             Top = 0
@@ -150,12 +150,12 @@ object MainForm: TMainForm
     object pgJSON: TTabSheet
       Caption = 'JSON'
       ClientHeight = 560
-      ClientWidth = 814
+      ClientWidth = 788
       inline SynEdit1: TSynEdit
         Left = 0
         Height = 523
         Top = 37
-        Width = 814
+        Width = 788
         Align = alClient
         Font.Height = -12
         Font.Name = 'Courier New'
@@ -666,13 +666,13 @@ object MainForm: TMainForm
         Left = 6
         Height = 25
         Top = 6
-        Width = 802
+        Width = 776
         Align = alTop
         AutoSize = True
         BorderSpacing.Around = 6
         BevelOuter = bvNone
         ClientHeight = 25
-        ClientWidth = 802
+        ClientWidth = 776
         TabOrder = 1
         object btnSave: TButton
           AnchorSideLeft.Control = Panel2
@@ -701,300 +701,133 @@ object MainForm: TMainForm
       end
     end
   end
-  object LeftPanel: TPanel
+  object LocationsPanel: TPanel
     Left = 6
     Height = 588
     Top = 6
-    Width = 160
+    Width = 186
     Align = alLeft
-    AutoSize = True
     BorderSpacing.Around = 6
     BevelOuter = bvNone
     ClientHeight = 588
-    ClientWidth = 160
+    ClientWidth = 186
     TabOrder = 1
-    object gbStart: TGroupBox
+    object lbLocations: TListBox
       Left = 0
-      Height = 95
-      Top = 37
-      Width = 160
-      Align = alTop
-      AutoSize = True
-      BorderSpacing.Top = 8
-      Caption = 'Start point'
-      ClientHeight = 75
-      ClientWidth = 156
-      Constraints.MinWidth = 160
+      Height = 538
+      Top = 50
+      Width = 186
+      Align = alClient
+      ItemHeight = 0
+      Options = []
+      Style = lbOwnerDrawFixed
       TabOrder = 0
-      object lblStartLat: TLabel
-        AnchorSideLeft.Control = gbStart
-        AnchorSideTop.Control = tbPickStartPt
-        AnchorSideTop.Side = asrBottom
-        Left = 12
-        Height = 15
-        Top = 33
-        Width = 43
-        BorderSpacing.Left = 12
-        Caption = 'Latitude'
-      end
-      object lblStartLon: TLabel
-        AnchorSideLeft.Control = gbStart
-        AnchorSideTop.Control = lblStartLat
-        AnchorSideTop.Side = asrBottom
-        Left = 12
-        Height = 15
-        Top = 52
-        Width = 54
-        BorderSpacing.Left = 12
-        BorderSpacing.Top = 4
-        BorderSpacing.Bottom = 8
-        Caption = 'Longitude'
-      end
-      object infoStartLon: TLabel
-        AnchorSideLeft.Control = lblStartLon
-        AnchorSideLeft.Side = asrBottom
-        AnchorSideTop.Control = lblStartLon
-        AnchorSideRight.Control = gbStart
-        AnchorSideRight.Side = asrBottom
-        Left = 74
-        Height = 15
-        Top = 52
-        Width = 74
-        Anchors = [akTop, akLeft, akRight]
-        BorderSpacing.Left = 8
-        BorderSpacing.Right = 8
-        BorderSpacing.Bottom = 8
-        Caption = 'infoStartLon'
-        Font.Style = [fsBold]
-        ParentFont = False
-      end
-      object infoStartLat: TLabel
-        AnchorSideLeft.Control = lblStartLon
-        AnchorSideLeft.Side = asrBottom
-        AnchorSideTop.Control = lblStartLat
-        AnchorSideRight.Control = gbStart
-        AnchorSideRight.Side = asrBottom
-        Left = 74
-        Height = 15
-        Top = 33
-        Width = 74
-        Anchors = [akTop, akLeft, akRight]
-        BorderSpacing.Left = 8
-        BorderSpacing.Right = 8
-        Caption = 'infoStartLat'
-        Font.Style = [fsBold]
-        ParentFont = False
-      end
-      object tbPickStartPt: TToggleBox
-        AnchorSideLeft.Control = gbStart
-        AnchorSideLeft.Side = asrCenter
-        AnchorSideTop.Control = gbStart
-        Left = 40
-        Height = 25
-        Hint = 'Activates selection of the start point of the route which is then picked by clicking in the map.'
-        Top = 0
-        Width = 76
-        BorderSpacing.Bottom = 8
-        Caption = 'Pick'
-        TabOrder = 0
-        OnClick = tbPickStartPtClick
-      end
+      OnClick = lbLocationsClick
+      OnDblClick = lbLocationsDblClick
+      OnDrawItem = lbLocationsDrawItem
+      OnMouseDown = lbLocationsMouseDown
     end
-    object gbEnd: TGroupBox
-      AnchorSideLeft.Control = LeftPanel
-      AnchorSideTop.Control = btnAddViaPoint
-      AnchorSideTop.Side = asrBottom
-      Left = 0
-      Height = 95
-      Top = 174
-      Width = 160
-      AutoSize = True
-      BorderSpacing.Top = 8
-      Caption = 'End point (destination)'
-      ClientHeight = 75
-      ClientWidth = 156
-      Constraints.MinWidth = 160
-      TabOrder = 1
-      object lblEndLat: TLabel
-        AnchorSideLeft.Control = gbEnd
-        AnchorSideTop.Control = tbPickEndPt
-        AnchorSideTop.Side = asrBottom
-        Left = 12
-        Height = 15
-        Top = 33
-        Width = 43
-        BorderSpacing.Left = 12
-        Caption = 'Latitude'
-      end
-      object lblEndLon: TLabel
-        AnchorSideLeft.Control = gbEnd
-        AnchorSideTop.Control = lblEndLat
-        AnchorSideTop.Side = asrBottom
-        Left = 12
-        Height = 15
-        Top = 52
-        Width = 54
-        BorderSpacing.Left = 12
-        BorderSpacing.Top = 4
-        BorderSpacing.Bottom = 8
-        Caption = 'Longitude'
-      end
-      object tbPickEndPt: TToggleBox
-        AnchorSideLeft.Control = gbEnd
-        AnchorSideLeft.Side = asrCenter
-        AnchorSideTop.Control = gbEnd
-        Left = 41
-        Height = 25
-        Hint = 'Activates selection of the end point of the route which is picked by clicking in the map.'
-        Top = 0
-        Width = 75
-        BorderSpacing.Bottom = 8
-        Caption = 'Pick'
-        TabOrder = 0
-        OnClick = tbPickEndPtClick
-      end
-      object infoEndLat: TLabel
-        AnchorSideLeft.Control = lblEndLon
-        AnchorSideLeft.Side = asrBottom
-        AnchorSideTop.Control = lblEndLat
-        AnchorSideRight.Control = gbEnd
-        AnchorSideRight.Side = asrBottom
-        Left = 74
-        Height = 15
-        Top = 33
-        Width = 74
-        Anchors = [akTop, akLeft, akRight]
-        BorderSpacing.Left = 8
-        BorderSpacing.Right = 8
-        Caption = 'infoEndLat'
-        Font.Style = [fsBold]
-        ParentFont = False
-      end
-      object infoEndLon: TLabel
-        AnchorSideLeft.Control = lblEndLon
-        AnchorSideLeft.Side = asrBottom
-        AnchorSideTop.Control = lblEndLon
-        AnchorSideRight.Control = gbEnd
-        AnchorSideRight.Side = asrBottom
-        Left = 74
-        Height = 15
-        Top = 52
-        Width = 74
-        Anchors = [akTop, akLeft, akRight]
-        BorderSpacing.Left = 8
-        BorderSpacing.Right = 8
-        BorderSpacing.Bottom = 8
-        Caption = 'infoEndLon'
-        Font.Style = [fsBold]
-        ParentFont = False
-      end
-    end
-    object btnClear: TButton
-      AnchorSideLeft.Control = gbEnd
-      AnchorSideLeft.Side = asrCenter
-      AnchorSideTop.Control = gbEnd
-      AnchorSideTop.Side = asrBottom
-      Left = 43
-      Height = 25
-      Hint = 'Clears the route'
-      Top = 281
-      Width = 75
-      BorderSpacing.Top = 12
-      Caption = 'Clear'
-      TabOrder = 2
-      OnClick = btnClearClick
-    end
-    object ToolbarPanel: TPanel
+    object LocationsToolbar: TToolBar
       Left = 0
       Height = 24
       Top = 0
-      Width = 160
-      Align = alTop
+      Width = 186
       AutoSize = True
-      BevelOuter = bvNone
-      ClientHeight = 24
-      ClientWidth = 160
-      TabOrder = 3
-      object sbAuto: TSpeedButton
-        AnchorSideTop.Control = ToolbarPanel
-        Left = 0
-        Height = 24
-        Hint = 'The route is calculated for a car.'
+      ButtonHeight = 24
+      ButtonWidth = 23
+      Caption = 'LocationsToolbar'
+      EdgeBorders = []
+      Images = GeneralDataModule.GeneralImages
+      List = True
+      ShowCaptions = True
+      TabOrder = 1
+      object tbAddLocation: TToolButton
+        Left = 1
+        Hint = 'Add via point'
         Top = 0
-        Width = 25
-        Down = True
-        GroupIndex = 1
-        Images = GeneralDataModule.GeneralImages
-        ImageIndex = 2
-        OnClick = sbAutoClick
+        ImageIndex = 4
+        OnClick = tbAddLocationClick
       end
-      object sbPedestrian: TSpeedButton
-        AnchorSideLeft.Control = sbAuto
-        AnchorSideLeft.Side = asrBottom
-        AnchorSideTop.Control = ToolbarPanel
-        Left = 25
-        Height = 24
-        Hint = 'The route is calculated for a pedestrian.'
+      object tbDeleteLocation: TToolButton
+        Left = 30
+        Hint = 'Delete via point'
         Top = 0
-        Width = 25
-        GroupIndex = 1
-        Images = GeneralDataModule.GeneralImages
-        ImageIndex = 3
-        OnClick = sbPedestrianClick
+        ImageIndex = 5
+        OnClick = tbDeleteLocationClick
       end
-      object sbSettings: TSpeedButton
-        AnchorSideTop.Control = ToolbarPanel
-        AnchorSideRight.Control = ToolbarPanel
-        AnchorSideRight.Side = asrBottom
-        Left = 135
+      object ToolButton3: TToolButton
+        Left = 59
         Height = 24
-        Hint = 'Configuration settings'
         Top = 0
-        Width = 25
-        Anchors = [akTop, akRight]
-        Images = GeneralDataModule.GeneralImages
+        Caption = 'ToolButton3'
+        Style = tbsDivider
+      end
+      object tbPickLocation: TToolButton
+        Left = 98
+        Hint = 'Pick location from map'
+        Top = 0
+        Caption = 'Pick'
+        ImageIndex = 6
+        Style = tbsCheck
+        OnClick = tbPickLocationClick
+      end
+      object tbClearLocations: TToolButton
+        Left = 64
+        Hint = 'Clear locations and route'
+        Top = 0
+        ImageIndex = 7
+        OnClick = tbClearLocationsClick
+      end
+      object ToolButton1: TToolButton
+        Left = 93
+        Height = 24
+        Top = 0
+        Caption = 'ToolButton1'
+        Style = tbsDivider
+      end
+      object tbSettings: TToolButton
+        Left = 154
+        Hint = 'Opens a configuration dialog'
+        Top = 0
         ImageIndex = 1
-        OnClick = sbSettingsClick
+        OnClick = tbSettingsClick
+      end
+      object ToolButton2: TToolButton
+        Left = 149
+        Height = 24
+        Top = 0
+        Caption = 'ToolButton2'
+        Style = tbsDivider
       end
     end
-    object Bevel1: TBevel
-      Left = 0
-      Height = 5
-      Top = 24
-      Width = 160
-      Align = alTop
-      Shape = bsBottomLine
-    end
-    object btnAddViaPoint: TBitBtn
-      AnchorSideLeft.Control = gbStart
-      AnchorSideTop.Control = ViaPointsPanel
-      AnchorSideTop.Side = asrBottom
+    object VehicleToolBar: TToolBar
       Left = 0
       Height = 26
-      Top = 140
-      Width = 117
-      AutoSize = True
-      BorderSpacing.Top = 8
-      Caption = 'Add via point'
+      Top = 24
+      Width = 186
+      Caption = 'VehicleToolBar'
       Images = GeneralDataModule.GeneralImages
-      ImageIndex = 4
-      TabOrder = 4
-      OnClick = btnAddViaPointClick
-    end
-    object ViaPointsPanel: TPanel
-      AnchorSideLeft.Control = gbStart
-      AnchorSideTop.Control = gbStart
-      AnchorSideTop.Side = asrBottom
-      AnchorSideRight.Control = gbStart
-      AnchorSideRight.Side = asrBottom
-      Left = 0
-      Height = 0
-      Top = 132
-      Width = 160
-      Anchors = [akTop, akLeft, akRight]
-      AutoSize = True
-      BevelOuter = bvNone
-      TabOrder = 5
+      TabOrder = 2
+      object tbVehicleAuto: TToolButton
+        Left = 1
+        Hint = 'Calculate the route for cars'
+        Top = 2
+        Down = True
+        Grouped = True
+        ImageIndex = 2
+        Style = tbsCheck
+        OnClick = tbVehicleAutoClick
+      end
+      object tbVehiclePedestrian: TToolButton
+        Left = 24
+        Hint = 'Calculate the route for pedestrians'
+        Top = 2
+        Caption = 'tbVehiclePedestrian'
+        Grouped = True
+        ImageIndex = 3
+        Style = tbsCheck
+        OnClick = tbVehiclePedestrianClick
+      end
     end
   end
   object ImageList32: TImageList
